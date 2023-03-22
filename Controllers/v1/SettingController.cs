@@ -41,13 +41,14 @@ namespace WarehouseWebApi.Controllers
             // 会社情報の取得
             var company = new CompanyModel.M_Company();
             var companys = CompanyModel.GetCompanyByCompanyCodeAndPassword(input.CompanyCode, input.CompanyPassword);
-            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+            if (companys.Count != 1) return Responce.ExBadRequest("会社情報の取得に失敗しました");
+            if (String.IsNullOrEmpty(companys[0].DatabaseName)) return Responce.ExBadRequest("データベースの取得に失敗しました");
             company = companys[0];
 
             // ハンディユーザー情報の取得
             var handyUser = new HandyUserModel.M_HandyUser();
             var handyUsers = HandyUserModel.GetHandyUserByHandyUserCode(company.DatabaseName, input.HandyUserCode);
-            if (handyUsers.Count != 1) return Responce.ExNotFound("ユーザー情報の取得に失敗しました");
+            if (handyUsers.Count != 1) return Responce.ExBadRequest("ユーザー情報の取得に失敗しました");
             handyUser = handyUsers[0];
 
             // デバイスの登録

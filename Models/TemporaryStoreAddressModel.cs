@@ -9,17 +9,18 @@ using WarehouseWebApi.common;
 
 namespace WarehouseWebApi.Models
 {
-    public class StoreInConstrainModel
+    public class TemporaryStoreAddressModel
     {
-        public class M_StoreInConstraint
+        public class M_TemporaryStoreAddress
         {
-            public string NextProcess1 { get; set; } = string.Empty;
-            public string NextProcess2 { get; set; } = string.Empty;
+            public int TemporaryStoreAddressID { get; set; }
+            public string TemporaryStoreAddress1 { get; set; } = string.Empty;
+            public string TemporaryStoreAddress2 { get; set; } = string.Empty;
         }
 
-        public static List<M_StoreInConstraint> GetStoreInConstraint(string databaseName, int depoID)
+        public static List<M_TemporaryStoreAddress> GetTemporaryStoreAddress(string databaseName, int depoID)
         {
-            var selectList = new List<M_StoreInConstraint>();
+            var selectList = new List<M_TemporaryStoreAddress>();
 
             var connectionString = new GetConnectString(databaseName).ConnectionString;
             using (var connection = new SqlConnection(connectionString))
@@ -30,19 +31,18 @@ namespace WarehouseWebApi.Models
 
                     var query = @"
                                         SELECT
-                                               NextProcess1
-                                              ,NextProcess2
-                                        FROM M_StoreInConstraint
+                                             TemporaryStoreAddressID
+                                            ,TemporaryStoreAddress2
+                                            ,TemporaryStoreAddress1
+                                        FROM M_TemporaryStoreAddress
                                         WHERE 1=1
                                             AND DepoID = @DepoID
-                                            AND NotUseFlag = @NotUseFlag
                                                 ";
                     var param = new
                     {
-                        DepoID = depoID,
-                        NotUseFlag = 0
+                        DepoID = depoID
                     };
-                    selectList = connection.Query<M_StoreInConstraint>(query, param).ToList();
+                    selectList = connection.Query<M_TemporaryStoreAddress>(query, param).ToList();
 
                     return selectList;
                 }

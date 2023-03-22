@@ -12,17 +12,13 @@ using System.Data.SqlClient;
 using System.Data;
 using Dapper;
 using WarehouseWebApi.Common;
-using System.ComponentModel.Design;
-//using Microsoft.AspNetCore.Http.HttpResults;
-using System.Linq.Expressions;
-using static WarehouseWebApi.Models.SettingModel;
 
 namespace WarehouseWebApi.Controllers
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
-    public class StoreInConstraintController : ControllerBase
+    public class ProductBulkStoreInController : ControllerBase
     {
         [HttpGet("{companyID}")]
         public IActionResult Get(int companyID, int depoID)
@@ -31,17 +27,17 @@ namespace WarehouseWebApi.Controllers
             if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
             var databaseName = companys[0].DatabaseName;
 
-            var storeInConstraints = new List<StoreInConstraintModel.M_StoreInConstraint>();
+            var productBulkStoreIns = new List<ProductBulkStoreInModel.ProductBulkStoreIn>();
             try
             {
-                storeInConstraints = StoreInConstraintModel.GetStoreInConstraint(databaseName, depoID);
+                productBulkStoreIns = ProductBulkStoreInModel.GetProductBulkStoreIn(databaseName, depoID);
             }
             catch (Exception ex)
             {
                 return Responce.ExServerError(ex);
             }
 
-            return storeInConstraints.Count() == 0 ? Responce.ExNotFound("在庫入庫制御情報の取得に失敗しました") : Ok(storeInConstraints);
+            return productBulkStoreIns.Count() == 0 ? Responce.ExNotFound("まとめ入庫品番の取得に失敗しました") : Ok(productBulkStoreIns);
         }
 
     }

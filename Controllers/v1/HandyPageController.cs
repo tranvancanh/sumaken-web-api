@@ -24,7 +24,7 @@ namespace WarehouseWebApi.Controllers
     public class HandyPageController : ControllerBase
     {
         [HttpGet("{companyID}")]
-        public IActionResult Get(int companyID, int depoID, int administratorFlag)
+        public IActionResult Get(int companyID, int depoID, int administratorFlag, int handyUserID = 0)
         {
             var companys = CompanyModel.GetCompanyByCompanyID(companyID);
             if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
@@ -33,14 +33,14 @@ namespace WarehouseWebApi.Controllers
             var handyPages = new List<HandyPageModel.M_HandyPage>();
             try
             {
-                handyPages = HandyPageModel.GetHandyPage(databaseName, depoID, administratorFlag);
+                handyPages = HandyPageModel.GetHandyPage(databaseName, depoID, administratorFlag, handyUserID);
             }
             catch (Exception ex)
             {
                 return Responce.ExServerError(ex);
             }
 
-            return handyPages.Count() == 0 ? Responce.ExNotFound("ハンディページの取得に失敗しました") : Ok(handyPages);
+            return handyPages.Count() == 0 ? Responce.ExNotFound("表示可能なメニューがありません") : Ok(handyPages);
         }
 
     }

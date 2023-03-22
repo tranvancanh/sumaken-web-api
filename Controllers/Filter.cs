@@ -86,6 +86,10 @@ namespace WarehouseWebApi.Controllers
                 else
                 {
                     responseStatusCode = context.HttpContext.Response.StatusCode;
+
+                    // Okeyの場合のレスポンスボディは、内容が大きいこともあるため
+                    // 記録したい場合のみ、会社ごとのテーブル[D_HandyReportLog]に書き込むこととする！
+                    // http://honeplus.blog50.fc2.com/blog-entry-210.html
                     //using (var streamReader = new StreamReader(context.HttpContext.Response.Body))
                     //{
                     //    if (streamReader.BaseStream.Length > 0)

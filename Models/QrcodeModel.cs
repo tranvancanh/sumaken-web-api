@@ -1,10 +1,12 @@
 ﻿using Dapper;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 using WarehouseWebApi.common;
+using static WarehouseWebApi.Models.ReceiveModel;
 
 namespace WarehouseWebApi.Models
 {
@@ -92,6 +94,15 @@ namespace WarehouseWebApi.Models
             /// 19:客先発行枝番（シリアル）
             /// </summary>
             public int CustomerProductLabelBranchNumber { get; set; }
+            /// <summary>
+            /// 14:置き場2（受入2）
+            /// </summary>
+            public string Location2 { get; set; } = string.Empty;
+
+            public static implicit operator QrcodeItem(List<ReceiveModel.RegistDataRecord> v)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public class M_QrcodeIndex
@@ -113,8 +124,9 @@ namespace WarehouseWebApi.Models
             public int ProductLabelBranchNumberIndex { get; set; }
             public int QuantityIndex { get; set; }
             public int NextProcess1Index { get; set; }
-            public int Location1Index { get; set; }
             public int NextProcess2Index { get; set; }
+            public int Location1Index { get; set; }
+            public int Location2ndex { get; set; }
             public int PackingIndex { get; set; }
 
             public int DeleveryDateLength { get; set; }
@@ -129,8 +141,9 @@ namespace WarehouseWebApi.Models
             public int ProductLabelBranchNumberLength { get; set; }
             public int QuantityLength { get; set; }
             public int NextProcess1Length { get; set; }
-            public int Location1Length { get; set; }
             public int NextProcess2Length { get; set; }
+            public int Location1Length { get; set; }
+            public int Location2Length { get; set; }
             public int PackingLength { get; set; }
 
         }
@@ -169,6 +182,8 @@ namespace WarehouseWebApi.Models
                                               ,Location1Length
                                               ,NextProcess2Index
                                               ,NextProcess2Length
+                                              ,Location2Index
+                                              ,Location2Length
                                               ,ProductCodeIndex
                                               ,ProductCodeLength
                                               ,ProductLabelBranchNumberIndex

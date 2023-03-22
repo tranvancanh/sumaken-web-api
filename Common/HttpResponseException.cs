@@ -7,12 +7,15 @@ namespace WarehouseWebApi.Common
 
     public class HttpResponseException : Exception
     {
+
         public int Status { get; set; }
+        //public StringContent Content { get; set; } = new StringContent("");
 
         public HttpResponseException(int status, string message, Exception innerException)
          : base(message, innerException)
         {
             Status = status;
+            //Content = new StringContent(message);
         }
 
         public HttpResponseException(int status, Exception innerException)
@@ -25,7 +28,9 @@ namespace WarehouseWebApi.Common
          : base(message)
         {
             Status = status;
+            //Content = new StringContent(message);
         }
+
     }
 
     public class HttpResponseExceptionFilter : IActionFilter, IOrderedFilter
@@ -40,7 +45,7 @@ namespace WarehouseWebApi.Common
             {
                 context.Result = new ObjectResult(httpResponseException.Message)
                 {
-                    StatusCode = httpResponseException.Status
+                    StatusCode = httpResponseException.Status,
                 };
 
                 context.ExceptionHandled = true;

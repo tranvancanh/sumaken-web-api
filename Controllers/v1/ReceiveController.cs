@@ -17,6 +17,11 @@ using System.Text;
 using WarehouseWebApi.Common;
 //using Microsoft.AspNetCore.Http.HttpResults;
 using System.ComponentModel.Design;
+using static WarehouseWebApi.Models.ReceiveModel;
+using static WarehouseWebApi.Models.QrcodeModel;
+using static WarehouseWebApi.Models.ScanCommonModel;
+using Newtonsoft.Json;
+using static WarehouseWebApi.Models.HandyReportLogModel;
 
 namespace WarehouseWebApi.Controllers
 {
@@ -26,183 +31,81 @@ namespace WarehouseWebApi.Controllers
     public class ReceiveController : ControllerBase
     {
         [HttpGet("{companyID}")]
-        public IActionResult Get(int companyID, string receiveDate)
+        public IActionResult Get(int companyID, string receiveDateStart, string receiveDateEnd)
         {
             var companys = CompanyModel.GetCompanyByCompanyID(companyID);
-            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+            if (companys.Count != 1) return Responce.ExBadRequest("会社情報の取得に失敗しました");
             var databaseName = companys[0].DatabaseName;
+            if (String.IsNullOrEmpty(databaseName)) return Responce.ExBadRequest("データベースの取得に失敗しました");
 
-            var receives = ReceiveModel.GetReceiveByReceiveDate(databaseName, receiveDate);
-            return receives.Count() == 0 ? Responce.ExNotFound("") : Ok(receives);
-        }
+            List<D_Receive> receives = new List<D_Receive>();
 
-        // POST: api/<controller>
-        [HttpPost("{companyID}")]
-        public IActionResult Post(int companyID, [FromBody]List<ReceiveModel.ReceivePostBody> body)
-        {
             try
             {
-                var createDatetime = DateTime.Now;
-
-                var registData = new RegistData();
-
-                // データベース名の取得
-                var companys = CompanyModel.GetCompanyByCompanyID(companyID);
-                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
-                registData.DatabaseName = companys[0].DatabaseName;
-
-                // 処理用のデータ詳細を取得
-                var getRegistData = GetRegistData(body);
-                if (getRegistData.result)
-                {
-                    registData.RegistDataRecords = getRegistData.registDatas;
-                    registData.CreateDate = createDatetime;
-
-                    var registScanData = Regist(registData);
-                    if (registScanData.result)
-                    {
-                        return Ok();
-                    }
-                    else
-                    {
-                        return Responce.ExBadRequest(registScanData.message);
-                    }
-                }
-                else
-                {
-                    return Responce.ExBadRequest("スキャンデータの変換に失敗しました");
-                }
-
+                receives = ReceiveModel.GetReceiveByReceiveDate(databaseName, receiveDateStart, receiveDateEnd);
             }
             catch (Exception ex)
             {
                 return Responce.ExServerError(ex);
             }
 
+            return receives.Count() == 0 ? Responce.ExNotFound("") : Ok(receives);
+
         }
 
-        private class RegistData
+        // POST: api/<controller>
+        [HttpPost("{companyID}")]
+        public IActionResult Post(int companyID, [FromBody]List<ScanPostBody> body)
         {
-            public string DatabaseName;
-            public DateTime CreateDate;
-            public List<RegistDataRecord> RegistDataRecords;
-        }
+            var createDatetime = DateTime.Now;
+            var registData = new RegistData();
 
-        private class RegistDataRecord
-        {
-            public ReceiveModel.ReceivePostBody PostBody;
-            public QrcodeModel.QrcodeItem QrcodeItem;
-        }
+            // データベース名の取得
+            var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+            registData.DatabaseName = companys[0].DatabaseName;
 
-        private (bool result, List<RegistDataRecord> registDatas) GetRegistData(List<ReceiveModel.ReceivePostBody> bodies)
-        {
-            bool result = true;
-            var registDatas = new List<RegistDataRecord>();
+            // 処理用のデータ詳細を取得
 
-            try
+            var getRegistData = GetScanRegistData(body);
+            if (getRegistData.result)
             {
+                registData.RegistDataRecords = getRegistData.registDatas;
+                registData.CreateDate = createDatetime;
 
-                for (int j = 0; j <= bodies.Count - 1; j++)
+                (bool result, ReceivePostBackBody receivePostBackBody, string message) receivePostBackBody = (false, new ReceivePostBackBody(), "");
+
+                try
                 {
-                    var registData = new RegistDataRecord();
-                    var qrcodeItem = new QrcodeModel.QrcodeItem();
+                    receivePostBackBody = Regist(registData);
+                }
+                catch (Exception ex)
+                {
+                    return Responce.ExServerError(ex);
+                }
 
-                    // パッケージ現品票QR型の値を取得して変換
-
-                    string[] items = bodies[j].ScanChangeData.Split(':');
-
-                    // 納期
-                    var deliveryDateString = items[0];
-                    if (deliveryDateString == "")
-                    {
-                        qrcodeItem.DeliveryDate = "";
-                    }
-                    else if (DateTime.TryParse(deliveryDateString, out DateTime deliveryDate))
-                    {
-                        qrcodeItem.DeliveryDate = deliveryDate.ToString("yyyy/MM/dd");
-                    }
-                    else
-                    {
-                        result = false;
-                        break;
-                    }
-
-                    // 便
-                    qrcodeItem.DeliveryTimeClass = items[1];
-
-                    // データ区分
-                    qrcodeItem.DataClass = items[2];
-
-                    // 発注区分
-                    qrcodeItem.OrderClass = items[3];
-
-                    // 伝票番号
-                    qrcodeItem.DeliverySlipNumber = items[4];
-
-                    // 仕入先コード
-                    qrcodeItem.SupplierCode = items[5];
-
-                    // 仕入先区分
-                    qrcodeItem.SupplierClass = items[6];
-
-                    // 製品コード
-                    qrcodeItem.ProductCode = items[7];
-
-                    // 製品略称
-                    qrcodeItem.ProductAbbreviation = items[8];
-
-                    // 発行枝番（シリアル）
-                    int branchNumber;
-                    if (!int.TryParse(items[9], out branchNumber))
-                    {
-                        result = false;
-                        break;
-                    }
-                    else
-                    {
-                        qrcodeItem.ProductLabelBranchNumber = branchNumber;
-                    }
-
-                    // 数量
-                    int quantity;
-                    if (!int.TryParse(items[10], out quantity))
-                    {
-                        result = false;
-                        break;
-                    }
-                    else
-                    {
-                        qrcodeItem.Quantity = quantity;
-                    }
-
-                    // 次工程1（納入先1）
-                    qrcodeItem.NextProcess1 = items[11];
-
-                    // 置き場1（受入1）
-                    qrcodeItem.Location1 = items[12];
-
-                    // 次工程2（納入先2）
-                    qrcodeItem.NextProcess2 = items[13];
-
-                    // 箱種（荷姿）
-                    qrcodeItem.Packing = items[14];
-
-                    registData.PostBody = bodies[j];
-                    registData.QrcodeItem = qrcodeItem;
-                    registDatas.Add(registData);
+                if (receivePostBackBody.result)
+                {
+                    return Ok(receivePostBackBody.receivePostBackBody);
+                }
+                else
+                {
+                    return Responce.ExBadRequest(receivePostBackBody.message);
                 }
 
             }
-            catch (Exception ex)
+            else
             {
-                throw;
+                return Responce.ExBadRequest("スキャンデータの変換に失敗しました");
             }
 
-            return (result, registDatas);
         }
 
-        private (bool result, string message) Regist(RegistData registData)
+        private (bool result, ReceivePostBackBody receivePostBackBody, string message) Regist(RegistData registData)
         {
+
+            HandyReportLog handyReport = new HandyReportLog();
+            ReceivePostBackBody receivePostBackBody = new ReceivePostBackBody();
 
             var connectionString = new GetConnectString(registData.DatabaseName).ConnectionString;
             using (var connection = new SqlConnection(connectionString))
@@ -216,6 +119,9 @@ namespace WarehouseWebApi.Controllers
 
                         for (int j = 0; j <= registData.RegistDataRecords.Count - 1; j++)
                         {
+                            HandyReportLogModel.HandyReportLog handyReportLog = new HandyReportLogModel.HandyReportLog();
+                            QrcodeModel.QrcodeItem alreadyRegisteredData = new QrcodeModel.QrcodeItem();
+
                             var post = registData.RegistDataRecords[j].PostBody;
                             var qrcode = registData.RegistDataRecords[j].QrcodeItem;
 
@@ -225,19 +131,67 @@ namespace WarehouseWebApi.Controllers
                             long scanRecordID = 0;
                             string sql1 = @"
                                 INSERT INTO D_ScanRecord
-                                    (DepoID, HandyUserID, Device, HandyPageID, ScanString1, ScanString2, ScanChangeData, ScanTime, Latitude, Longitude, CreateDate) 
+                                    (
+                                         DepoID
+                                        ,HandyUserID
+                                        ,HandyOperationClass
+                                        ,HandyOperationMessage
+                                        ,Device
+                                        ,HandyPageID
+                                        ,StoreInFlag
+                                        ,StoreOutFlag
+                                        ,ScanStoreAddress1
+                                        ,ScanStoreAddress2
+                                        ,InputQuantity
+                                        ,InputPackingCount
+                                        ,ScanString1
+                                        ,ScanString2
+                                        ,ScanChangeData
+                                        ,ScanTime
+                                        ,Latitude
+                                        ,Longitude
+                                        ,CreateDate
+                                    ) 
                                     OUTPUT 
                                        INSERTED.ScanRecordID
                                 VALUES
-                                    (@DepoID, @HandyUserID, @Device, @HandyPageID, @ScanString1, @ScanString2, @ScanChangeData, @ScanTime, @Latitude, @Longitude, @CreateDate)
+                                    (
+                                         @DepoID
+                                        ,@HandyUserID
+                                        ,@HandyOperationClass
+                                        ,@HandyOperationMessage
+                                        ,@Device
+                                        ,@HandyPageID
+                                        ,@StoreInFlag
+                                        ,@StoreOutFlag
+                                        ,@ScanStoreAddress1
+                                        ,@ScanStoreAddress2
+                                        ,@InputQuantity
+                                        ,@InputPackingCount
+                                        ,@ScanString1
+                                        ,@ScanString2
+                                        ,@ScanChangeData
+                                        ,@ScanTime
+                                        ,@Latitude
+                                        ,@Longitude
+                                        ,@CreateDate
+                                    )
                                 ";
 
                             var param1 = new
                             {
                                 post.DepoID,
                                 post.HandyUserID,
+                                post.HandyOperationClass,
+                                post.HandyOperationMessage,
                                 post.Device,
                                 post.HandyPageID,
+                                post.StoreInFlag,
+                                StoreOutFlag = false,
+                                post.ScanStoreAddress1,
+                                post.ScanStoreAddress2,
+                                post.InputQuantity,
+                                post.InputPackingCount,
                                 post.ScanString1,
                                 post.ScanString2,
                                 post.ScanChangeData,
@@ -251,7 +205,7 @@ namespace WarehouseWebApi.Controllers
                             if (result1 < 1)
                             {
                                 tran.Rollback();
-                                return (false, "スキャン実績の登録に失敗しました");
+                                return (false, receivePostBackBody, "スキャン実績の登録に失敗しました");
                             }
                             else
                             {
@@ -260,6 +214,14 @@ namespace WarehouseWebApi.Controllers
 
                             #endregion
 
+                            // スキャンOK以外は、ここで終了する
+                            // Error情報を記録するのみ
+                            if (post.HandyOperationClass != 0)
+                            {
+                                // スキップ
+                                continue;
+                            }
+
                             #region 入荷済みチェック
 
                             string sql2 = @"
@@ -267,7 +229,12 @@ namespace WarehouseWebApi.Controllers
                                         COUNT(*) AS DataCount
                                     FROM D_Receive AS A 
                                     WHERE
-                                        A.ReceiveDate = @ReceiveDate
+                                        (
+                                            A.ReceiveDate <= @ReceiveDate
+                                            AND
+                                            A.ReceiveDate >= @DuplicateCheckStartReceiveDate
+                                        )
+                                        AND DeleteFlag = @DeleteFlag
                                         AND A.SupplierCode = @SupplierCode
                                         AND A.SupplierClass = @SupplierClass
                                         AND A.ProductCode = @ProductCode
@@ -275,18 +242,24 @@ namespace WarehouseWebApi.Controllers
                                         AND A.Quantity = @Quantity
                                         AND A.NextProcess1 = @NextProcess1
                                         AND A.NextProcess2 = @NextProcess2
+                                        AND A.Location1 = @Location1
+                                        AND A.Location2 = @Location2
                                         AND A.Packing = @Packing
                                      ";
 
                             var param2 = new
                             {
-                                post.ReceiveDate,
+                                ReceiveDate = post.ProcessDate,
+                                DuplicateCheckStartReceiveDate = post.DuplicateCheckStartProcessDate,
+                                DeleteFlag = 0,
                                 qrcode.SupplierCode,
                                 qrcode.SupplierClass,
                                 qrcode.ProductCode,
                                 qrcode.ProductLabelBranchNumber,
                                 qrcode.NextProcess1,
                                 qrcode.NextProcess2,
+                                qrcode.Location1,
+                                qrcode.Location2,
                                 qrcode.Quantity,
                                 qrcode.Packing
                             };
@@ -296,8 +269,18 @@ namespace WarehouseWebApi.Controllers
                             if (result2 > 0)
                             {
                                 // 既に入荷登録がある場合
+                                alreadyRegisteredData = qrcode;
 
-                                // 現状は何もせずスキップする、D_ScanRecordのみINSERTする
+                                receivePostBackBody.AlreadyRegisteredDatas.Add(alreadyRegisteredData);
+                                receivePostBackBody.AlreadyRegisteredDataCount++;
+
+                                //string reportJson = JsonConvert.SerializeObject(alreadyRegisteredData);
+                                //var handyReportInsertResult = Util.InsertHandyReportLog(registData.DatabaseName, scanRecordID, reportJson);
+                                handyReportLog.ScanRecordID = scanRecordID;
+                                handyReportLog.HandyReport = JsonConvert.SerializeObject(alreadyRegisteredData);
+                                handyReport.HandyReportLogs.Add(handyReportLog);
+
+                                // スキップ
                                 continue;
                             }
 
@@ -315,7 +298,9 @@ namespace WarehouseWebApi.Controllers
                                                 SELECT
                                                     A.ReceiveScheduleDetailID
                                                 FROM D_ReceiveScheduleDetail AS A
-                                                LEFT OUTER JOIN D_ReceiveScheduleHeader AS B ON A.ReceiveScheduleDate = B.ReceiveScheduleDate AND A.DeliverySlipNumber = B.DeliverySlipNumber
+                                                LEFT OUTER JOIN D_ReceiveScheduleHeader AS B
+                                                    ON   A.ReceiveScheduleDate = B.ReceiveScheduleDate
+                                                    AND A.DeliverySlipNumber = B.DeliverySlipNumber
                                                 WHERE (1=1)
                                                     AND A.ReceiveScheduleDate = @ReceiveScheduleDate
                                                     AND A.DeliverySlipNumber = @DeliverySlipNumber
@@ -341,13 +326,13 @@ namespace WarehouseWebApi.Controllers
                                 {
                                     // データの取得に失敗した場合
                                     tran.Rollback();
-                                    return (false, "入荷予定データの取得に失敗しました");
+                                    return (false, receivePostBackBody, "入荷予定データの取得に失敗しました");
                                 }
                                 else if (result3[0] > 1)
                                 {
                                     // 入荷予定が複数存在した場合
                                     tran.Rollback();
-                                    return (false, "入荷予定データの取得に失敗しました");
+                                    return (false, receivePostBackBody, "入荷予定データの取得に失敗しました");
                                 }
                                 else if (result3[0] == 0)
                                 {
@@ -367,6 +352,21 @@ namespace WarehouseWebApi.Controllers
 
                             #endregion
 
+                            #region 入荷（入庫）合計数量の計算
+
+                            // 箱数セット
+                            var packingCount = (post.InputPackingCount == 0) ? 1 : post.InputPackingCount;
+                            // 入荷合計数量の算出
+                            var totalQuantity = Util.GetRegistTotalQuantity(post.InputQuantity, post.InputPackingCount, qrcode.Quantity);
+
+                            if (totalQuantity == 0)
+                            {
+                                tran.Rollback();
+                                return (false, receivePostBackBody, "入庫合計数量が0のデータは登録できません");
+                            }
+
+                            #endregion
+
                             #region 入荷実績をINSERT
 
                             // 入荷実績IDを取得
@@ -374,8 +374,9 @@ namespace WarehouseWebApi.Controllers
                             string sql4 = @"
                                                 INSERT INTO D_Receive 
                                                 (
-	                                               ScanRecordID
+                                                   ScanRecordID
                                                   ,ReceiveScheduleDetailID
+                                                  ,ReceiveDate
                                                   ,DepoID
                                                   ,DeliveryDate
                                                   ,DeliveryTimeClass
@@ -385,19 +386,31 @@ namespace WarehouseWebApi.Controllers
                                                   ,SupplierClass
                                                   ,CustomerCode
                                                   ,CustomerClass
-                                                  ,ReceiveDate
                                                   ,ProductCode
                                                   ,ProductAbbreviation
                                                   ,ProductManagementClass
                                                   ,ProductLabelBranchNumber
+                                                  ,CustomerProductCode
+                                                  ,CustomerProductAbbreviation
+                                                  ,CustomerProductLabelBranchNumber
                                                   ,NextProcess1
                                                   ,Location1
                                                   ,NextProcess2
                                                   ,Location2
                                                   ,LotQuantity
+                                                  ,FractionQuantity
+                                                  ,DefectiveQuantity
                                                   ,Quantity
                                                   ,Packing
                                                   ,PackingCount
+                                                  ,LotNumber
+                                                  ,InvoiceNumber
+                                                  ,OrderNumber
+                                                  ,ExpirationDate
+                                                  ,CostPrice
+                                                  ,DeleteFlag
+                                                  ,DeleteReceiveID
+                                                  ,Remark
                                                   ,CreateDate
                                                   ,CreateUserID
                                                   ,UpdateDate
@@ -407,8 +420,9 @@ namespace WarehouseWebApi.Controllers
                                                    INSERTED.ReceiveID
                                                 VALUES
                                                 (
-	                                               @ScanRecordID
+                                                   @ScanRecordID
                                                   ,@ReceiveScheduleDetailID
+                                                  ,@ReceiveDate
                                                   ,@DepoID
                                                   ,@DeliveryDate
                                                   ,@DeliveryTimeClass
@@ -418,19 +432,31 @@ namespace WarehouseWebApi.Controllers
                                                   ,@SupplierClass
                                                   ,@CustomerCode
                                                   ,@CustomerClass
-                                                  ,@ReceiveDate
                                                   ,@ProductCode
                                                   ,@ProductAbbreviation
                                                   ,@ProductManagementClass
                                                   ,@ProductLabelBranchNumber
+                                                  ,@CustomerProductCode
+                                                  ,@CustomerProductAbbreviation
+                                                  ,@CustomerProductLabelBranchNumber
                                                   ,@NextProcess1
                                                   ,@Location1
                                                   ,@NextProcess2
                                                   ,@Location2
                                                   ,@LotQuantity
+                                                  ,@FractionQuantity
+                                                  ,@DefectiveQuantity
                                                   ,@Quantity
                                                   ,@Packing
                                                   ,@PackingCount
+                                                  ,@LotNumber
+                                                  ,@InvoiceNumber
+                                                  ,@OrderNumber
+                                                  ,@ExpirationDate
+                                                  ,@CostPrice
+                                                  ,@DeleteFlag
+                                                  ,@DeleteReceiveID
+                                                  ,@Remark
                                                   ,@CreateDate
                                                   ,@CreateUserID
                                                   ,@UpdateDate
@@ -451,19 +477,32 @@ namespace WarehouseWebApi.Controllers
                                 qrcode.SupplierClass,
                                 qrcode.CustomerCode,
                                 qrcode.CustomerClass,
-                                post.ReceiveDate,
+                                ReceiveDate = post.ProcessDate,
                                 qrcode.ProductCode,
                                 qrcode.ProductAbbreviation,
                                 qrcode.ProductLabelBranchNumber,
+                                qrcode.CustomerProductCode,
+                                qrcode.CustomerProductAbbreviation,
+                                qrcode.CustomerProductLabelBranchNumber,
                                 ProductManagementClass = "",
                                 qrcode.NextProcess1,
                                 qrcode.Location1,
                                 qrcode.NextProcess2,
                                 Location2 ="",
                                 LotQuantity = qrcode.Quantity,
-                                qrcode.Quantity,
+                                FractionQuantity = 0,
+                                DefectiveQuantity = 0,
+                                Quantity = totalQuantity,
                                 qrcode.Packing,
-                                PackingCount = 1,
+                                PackingCount = packingCount,
+                                LotNumber = "",
+                                InvoiceNumber = "",
+                                OrderNumber = "",
+                                ExpirationDate = "",
+                                CostPrice = 0,
+                                DeleteFlag = 0,
+                                DeleteReceiveID = "",
+                                Remark = "",
                                 registData.CreateDate,
                                 CreateUserID = post.HandyUserID,
                                 UpdateDate = registData.CreateDate,
@@ -474,11 +513,13 @@ namespace WarehouseWebApi.Controllers
                             if (result4 < 1)
                             {
                                 tran.Rollback();
-                                return (false, "入荷実績データの登録に失敗しました");
+                                return (false, receivePostBackBody, "入荷実績データの登録に失敗しました");
                             }
                             else
                             {
                                 receiveID = result4;
+                                //receiveSuccessDataCount++;
+                                receivePostBackBody.SuccessDataCount++;
                             }
                             
                             #endregion
@@ -486,7 +527,7 @@ namespace WarehouseWebApi.Controllers
                             #region 在庫入庫データをINSERT
 
                             // 在庫入庫フラグが1の場合のみ
-                            if (post.StoreInFlag == 1)
+                            if (post.StoreInFlag)
                             {
                                 string sql5 = @"
                                                 INSERT INTO D_StoreIn 
@@ -498,6 +539,7 @@ namespace WarehouseWebApi.Controllers
                                                       ,ProductCode
                                                       ,Quantity
                                                       ,Packing
+                                                      ,PackingCount
                                                       ,StockLocation1
                                                       ,StockLocation2
                                                       ,Remark
@@ -517,6 +559,7 @@ namespace WarehouseWebApi.Controllers
                                                       ,@ProductCode
                                                       ,@Quantity
                                                       ,@Packing
+                                                      ,@PackingCount
                                                       ,@StockLocation1
                                                       ,@StockLocation2
                                                       ,@Remark
@@ -534,12 +577,13 @@ namespace WarehouseWebApi.Controllers
                                     ReceiveID = receiveID,
                                     ScanRecordID = scanRecordID,
                                     post.DepoID,
-                                    StoreInDate = post.ReceiveDate,
+                                    StoreInDate = post.ProcessDate,
                                     qrcode.ProductCode,
                                     qrcode.Quantity,
                                     qrcode.Packing,
-                                    StockLocation1 = qrcode.NextProcess1,
-                                    StockLocation2 = qrcode.Location1,
+                                    PackingCount = 1, // 入庫データ作成は１箱ずつ
+                                    StockLocation1 = (post.ScanStoreAddress1 == "") ? qrcode.NextProcess1 : post.ScanStoreAddress1,
+                                    StockLocation2 = (post.ScanStoreAddress2 == "") ? qrcode.Location1 : post.ScanStoreAddress2,
                                     Remark = "",
                                     DeleteFlag = 0,
                                     DeleteStoreInID = 0,
@@ -549,17 +593,22 @@ namespace WarehouseWebApi.Controllers
                                     UpdateUserID = post.HandyUserID
                                 };
 
-                                // 処理件数を返す
-                                var result5 = connection.Execute(sql5, param5, tran);
+                                // 在庫単位ごとに入庫データを作成（入庫単位＝出庫単位）
+                                // 箱数の分だけINSERTを繰り返す
+                                for (int x = 0; x < packingCount; ++x)
+                                {
+                                    // 処理件数を返す
+                                    var result5 = connection.Execute(sql5, param5, tran);
 
-                                if (result5 < 1)
-                                {
-                                    tran.Rollback();
-                                    return (false, "在庫入庫データの登録に失敗しました");
-                                }
-                                else
-                                {
-                                    // スキップ
+                                    if (result5 < 1)
+                                    {
+                                        tran.Rollback();
+                                        return (false, receivePostBackBody, "在庫入庫データの登録に失敗しました");
+                                    }
+                                    else
+                                    {
+                                        // スキップ
+                                    }
                                 }
 
                                 #endregion
@@ -568,15 +617,20 @@ namespace WarehouseWebApi.Controllers
 
                         }
 
+                        if (handyReport.HandyReportLogs.Count > 0)
+                        {
+                            var handyReportInsertResult =  HandyReportLogModel.InsertHandyReportLog(registData.DatabaseName, handyReport.HandyReportLogs);
+                        }
+
                     }
                     catch (Exception ex)
                     {
                         tran.Rollback();
-                        return (false, "データの登録に失敗しました");
+                        return (false, receivePostBackBody, "データの登録に失敗しました");
                     }
 
                     tran.Commit();
-                    return (true, "入荷実績データの登録に失敗しました");
+                    return (true, receivePostBackBody, "");
                 }
             }
 

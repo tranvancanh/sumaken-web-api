@@ -6,11 +6,26 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 using WarehouseWebApi.common;
+using static WarehouseWebApi.Models.QrcodeModel;
+using static WarehouseWebApi.Models.ScanCommonModel;
 
 namespace WarehouseWebApi.Models
 {
     public class ReceiveModel
     {
+        public class RegistData
+        {
+            public string DatabaseName { get; set; } = String.Empty;
+            public DateTime CreateDate { get; set; }
+            public List<RegistDataRecord> RegistDataRecords { get; set; } = new List<RegistDataRecord>();
+        }
+
+        public class RegistDataRecord
+        {
+            public ScanPostBody PostBody { get; set; } = new ScanPostBody();
+            public QrcodeItem QrcodeItem { get; set; } = new QrcodeItem();
+    }
+
         public class D_Receive
         {
             public string SupplierCode { get; set; } = String.Empty;
@@ -23,7 +38,7 @@ namespace WarehouseWebApi.Models
             public string NextProcess2 { get; set; } = String.Empty;
         }
 
-        public static List<D_Receive> GetReceiveByReceiveDate(string databaseName, string receiveDate)
+        public static List<D_Receive> GetReceiveByReceiveDate(string databaseName, string receiveDateStart, string receiveDateEnd)
         {
             var receives = new List<D_Receive>();
 
@@ -41,18 +56,22 @@ namespace WarehouseWebApi.Models
                                               ,ProductCode
                                               ,NextProcess1
                                               ,NextProcess2
-                                              ,Quantity
+                                              ,LotQuantity AS Quantity
                                               ,Packing
                                               ,PackingCount
                                               ,ProductLabelBranchNumber
                                           FROM D_Receive
                                           WHERE (1=1)
-                                                AND ReceiveDate = @ReceiveDate
+                                                AND ReceiveDate >= @ReceiveDateStart
+                                                AND ReceiveDate <= @ReceiveDateEnd
+                                                AND DeleteFlag = @DeleteFlag
                                                 ";
 
                     var param = new
                     {
-                        ReceiveDate = receiveDate
+                        ReceiveDateStart = receiveDateStart,
+                        ReceiveDateEnd = receiveDateEnd,
+                        DeleteFlag = 0
                     };
 
                     receives = connection.Query<D_Receive>(query, param).ToList();
@@ -68,32 +87,29 @@ namespace WarehouseWebApi.Models
 
         }
 
-        public class ReceivePostBody
+        public class ReceivePostBackBody
         {
-            [Required]
-            public int DepoID { get; set; }
-            [Required]
-            public int HandyPageID { get; set; }
-            [Required]
-            public string ReceiveDate { get; set; } = String.Empty;
-            [Required]
-            public int StoreInFlag { get; set; }
-            [Required]
-            public int HandyUserID { get; set; }
-            [Required]
-            public string Device { get; set; } = String.Empty;
-            [Required]
-            public string ScanString1 { get; set; } = String.Empty;
-            public string ScanString2 { get; set; } = String.Empty;
-            [Required]
-            public string ScanChangeData { get; set; } = String.Empty;
-            [Required]
-            public DateTime ScanTime { get; set; }
-            [Required]
-            public double Latitude { get; set; }
-            [Required]
-            public double Longitude { get; set; }
+            /// <summary>
+            /// 登録成功データカウント
+            /// </summary>
+            public int SuccessDataCount { get; set; }
+            /// <summary>
+            /// 既に登録済のデータカウント
+            /// </summary>
+            public int AlreadyRegisteredDataCount { get; set; }
+            /// <summary>
+            /// 既に登録済のデータ
+            /// </summary>
+            public List<QrcodeItem> AlreadyRegisteredDatas { get; set; } = new List<QrcodeItem>();
         }
+
+        //public class AlreadyRegisteredData
+        //{
+        //    public string RegisteredProductCode { get; set; } = String.Empty;
+        //    public string RegisteredSupplierCode { get; set; } = String.Empty;
+        //    public int RegisteredQuantity { get; set; }
+        //    public int RegisteredProductLabelBranchNumber { get; set; }
+        //}
 
     }
 
