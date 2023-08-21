@@ -118,6 +118,7 @@ namespace WarehouseWebApi.Controllers
             outPut.CompanyName = company.CompanyName;
             outPut.HandyUserName = handyUser.HandyUserName;
             outPut.AdministratorFlag = handyUser.AdministratorFlag;
+            outPut.DefaultHandyPageID = handyUser.DefaultHandyPageID;
             outPut.DepoID = depo.DepoID;
             outPut.DepoCode = depo.DepoCode;
             outPut.DepoName = depo.DepoName;

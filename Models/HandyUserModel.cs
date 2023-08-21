@@ -19,6 +19,7 @@ namespace WarehouseWebApi.Models
             public string HandyUserPassword { get; set; } = string.Empty;
             public string HandyUserName { get; set; } = string.Empty;
             public int AdministratorFlag { get; set; }
+            public int DefaultHandyPageID { get; set; }
             public int PasswordMode { get; set; }
         }
 
@@ -38,6 +39,7 @@ namespace WarehouseWebApi.Models
                                                HandyUserCode,
                                                HandyUserName,
                                                AdministratorFlag,
+                                               DefaultHandyPageID,
                                                PasswordMode
                                         FROM M_HandyUser
                                         WHERE 1=1
@@ -75,6 +77,7 @@ namespace WarehouseWebApi.Models
                                                HandyUserCode,
                                                HandyUserName,
                                                AdministratorFlag,
+                                               DefaultHandyPageID,
                                                PasswordMode
                                         FROM M_HandyUser
                                         WHERE 1=1
@@ -114,6 +117,7 @@ namespace WarehouseWebApi.Models
                                                HandyUserCode,
                                                HandyUserName,
                                                AdministratorFlag,
+                                               DefaultHandyPageID,
                                                PasswordMode
                                         FROM M_HandyUser
                                         WHERE 1=1

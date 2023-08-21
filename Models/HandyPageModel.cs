@@ -13,6 +13,7 @@ namespace WarehouseWebApi.Models
     {
         public class M_HandyPage
         {
+            public int HandyPageNumber { get; set; }
             public int HandyPageID { get; set; }
             public string HandyPageName { get; set; } = string.Empty;
         }
@@ -38,7 +39,8 @@ namespace WarehouseWebApi.Models
 
                     var query = $@"
                                         SELECT
-                                               A.HandyPageID
+                                               A.SortNumber AS HandyPageNumber
+                                              ,A.HandyPageID
                                               ,A.HandyPageName
                                         FROM M_HandyPage AS A
                                         {addLeftOuter}
