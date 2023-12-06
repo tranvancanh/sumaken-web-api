@@ -107,10 +107,15 @@ namespace WarehouseWebApi.Models
 
         public class M_QrcodeIndex
         {
-            public string IdentifyString { get; set; } = string.Empty;
+            public string IdentifyString { get; set; }
             public int IdentifyIndex { get; set; }
 
+            public string IdentifySecondString { get; set; }
+            public int IdentifySecondIndex { get; set; }
+
             public int MaxStringLength { get; set; }
+
+            public bool ToyotaEdiWgFlag { get; set; }
 
             public int DeleveryDateIndex { get; set; }
             public int DeliveryTimeClassIndex { get; set; }
@@ -162,6 +167,8 @@ namespace WarehouseWebApi.Models
                                         SELECT 
                                                IdentifyString
                                               ,IdentifyIndex
+                                              ,IdentifySecondString
+                                              ,IdentifySecondIndex
                                               ,DeleveryDateIndex
                                               ,DeleveryDateLength
                                               ,DeliveryTimeClassIndex
@@ -195,6 +202,7 @@ namespace WarehouseWebApi.Models
                                               ,PackingIndex
                                               ,PackingLength
                                               ,MaxStringLength
+                                              ,ToyotaEdiWgFlag
                                           FROM M_Qrcode AS A
                                           LEFT OUTER JOIN M_QrcodeIndex AS B ON A.QrcodeIndexID = B.QrcodeIndexID
                                           WHERE 1=1
