@@ -49,7 +49,7 @@ namespace WarehouseWebApi.Controllers
                 return Responce.ExServerError(ex);
             }
 
-            return receives.Count() == 0 ? Responce.ExNotFound("") : Ok(receives);
+            return receives.Count() == 0 ? NotFound("データが存在しません") : Ok(receives);
 
         }
 

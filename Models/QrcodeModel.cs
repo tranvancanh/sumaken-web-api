@@ -150,6 +150,7 @@ namespace WarehouseWebApi.Models
             public int Location1Length { get; set; }
             public int Location2Length { get; set; }
             public int PackingLength { get; set; }
+            public bool ForShipmentFlag {  get; set; }
 
         }
 
@@ -203,6 +204,7 @@ namespace WarehouseWebApi.Models
                                               ,PackingLength
                                               ,MaxStringLength
                                               ,ToyotaEdiWgFlag
+                                              ,ForShipmentFlag
                                           FROM M_Qrcode AS A
                                           LEFT OUTER JOIN M_QrcodeIndex AS B ON A.QrcodeIndexID = B.QrcodeIndexID
                                           WHERE 1=1
@@ -224,5 +226,5 @@ namespace WarehouseWebApi.Models
                 }
             }
         }
-        }
+    }
 }
