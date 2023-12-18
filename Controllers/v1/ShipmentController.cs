@@ -1,20 +1,30 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using System.Data.SqlClient;
 using WarehouseWebApi.common;
 using WarehouseWebApi.Common;
 using WarehouseWebApi.Models;
+using static WarehouseWebApi.Models.HandyReportLogModel;
+using static WarehouseWebApi.Models.QrcodeModel;
+using static WarehouseWebApi.Models.ReceiveModel;
+using static WarehouseWebApi.Models.ScanCommonModel;
 
-namespace WarehouseWebApi.Controllers.v1
+namespace WarehouseWebApi.Controllers
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     public class ShipmentController : ControllerBase
     {
+        private static int defaultInt = 0;
+        private static long defaultBigInt = 0L;
+        private static bool defaultBool = false;
+        private static string defaultString = string.Empty;
+        private static DateTime defaultDateTime = new DateTime(1900, 01, 01);
 
         [HttpGet("{companyID}")]
-        public IActionResult Get(int companyID, int depoID, string receiveDateStart, string receiveDateEnd)
+        public async Task<IActionResult> Get(int companyID, int depoID, string receiveDateStart, string receiveDateEnd)
         {
             var registedData = new List<D_ShipmentModel>();
             try
@@ -23,7 +33,7 @@ namespace WarehouseWebApi.Controllers.v1
                 if (companys.Count != 1) return Responce.ExBadRequest("会社情報の取得に失敗しました");
                 var databaseName = companys[0].DatabaseName;
                 if (string.IsNullOrEmpty(databaseName)) return Responce.ExBadRequest("データベースの取得に失敗しました");
-                registedData = GetShippedDataByDeliveryDate(databaseName, depoID, receiveDateStart, receiveDateEnd);
+                registedData = await GetShippedDataByDeliveryDate(databaseName, depoID, receiveDateStart, receiveDateEnd);
             }
             catch (Exception ex)
             {
@@ -33,7 +43,7 @@ namespace WarehouseWebApi.Controllers.v1
             return Ok(registedData);
         }
 
-        public List<D_ShipmentModel> GetShippedDataByDeliveryDate(string databaseName, int depoID, string shipmentDateStart, string shipmentDateStop)
+        public async Task<List<D_ShipmentModel>> GetShippedDataByDeliveryDate(string databaseName, int depoID, string shipmentDateStart, string shipmentDateStop)
         {
             var registedData = new List<D_ShipmentModel>();
             var connectionString = new GetConnectString(databaseName).ConnectionString;
@@ -106,10 +116,486 @@ namespace WarehouseWebApi.Controllers.v1
                     ShipmentDateStop = shipmentDateStop
                 };
 
-                registedData = connection.Query<D_ShipmentModel>(query, param).ToList();
+                registedData = (await connection.QueryAsync<D_ShipmentModel>(query, param)).ToList();
 
                 return registedData;
             }
+        }
+
+
+        [HttpPost("{companyID}")]
+        public async Task<IActionResult> Post(int companyID, [FromBody] List<ScanPostBody> body)
+        {
+            var createDatetime = DateTime.Now;
+            var registData = new RegistData();
+
+            // データベース名の取得
+            var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+            registData.DatabaseName = companys[0].DatabaseName;
+
+            // 処理用のデータ詳細を取得
+
+            var getRegistData = GetScanRegistData(body);
+
+            if (getRegistData.result)
+            {
+                registData.RegistDataRecords = getRegistData.registDatas;
+                registData.CreateDate = createDatetime;
+
+                (bool result, ReceivePostBackBody receivePostBackBody, string message) receivePostBackBody = (false, new ReceivePostBackBody(), "");
+
+                try
+                {
+                    receivePostBackBody = await SaveChangeData(registData);
+                    return Ok(receivePostBackBody.receivePostBackBody);
+                }
+                catch (Exception ex)
+                {
+                    return Responce.ExServerError(ex);
+                }
+
+            }
+            else
+            {
+                return Responce.ExBadRequest("スキャンデータの変換に失敗しました");
+            }
+        }
+
+
+        private async Task<(bool result, ReceivePostBackBody receivePostBackBody, string message)> SaveChangeData(RegistData registData)
+        {
+            HandyReportLog handyReport = new HandyReportLog();
+            ReceivePostBackBody receivePostBackBody = new ReceivePostBackBody();
+
+            var connectionString = new GetConnectString(registData.DatabaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (var tran = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        var listDataRegisted = new List<RegistDataRecord>();
+                        var handyReportLog = new List<HandyReportLog>();
+                        for (int j = 0; j < registData.RegistDataRecords.Count; j++)
+                        {
+                            var dtNow = DateTime.Now;
+                            var postData = registData.RegistDataRecords[j].PostBody;
+                            var qrCodeItem = registData.RegistDataRecords[j].QrcodeItem; // 製品かんばん
+                            var qrCodeItem2 = registData.RegistDataRecords[j].QrcodeItem2; // 出荷かんばん
+
+                            // スキャン履歴IDを取得
+                            var scanRecordID = 0L;
+                            var sql1 = @"
+                                INSERT INTO D_ScanRecord
+                                    (
+                                         DepoID
+                                        ,HandyUserID
+                                        ,HandyOperationClass
+                                        ,HandyOperationMessage
+                                        ,Device
+                                        ,HandyPageID
+                                        ,StoreInFlag
+                                        ,StoreOutFlag
+                                        ,ScanStoreAddress1
+                                        ,ScanStoreAddress2
+                                        ,InputQuantity
+                                        ,InputPackingCount
+                                        ,ScanString1
+                                        ,ScanString2
+                                        ,ScanChangeData
+                                        ,ScanTime
+                                        ,Latitude
+                                        ,Longitude
+                                        ,CreateDate
+                                    ) 
+                                    OUTPUT 
+                                       INSERTED.ScanRecordID
+                                VALUES
+                                    (
+                                         @DepoID
+                                        ,@HandyUserID
+                                        ,@HandyOperationClass
+                                        ,@HandyOperationMessage
+                                        ,@Device
+                                        ,@HandyPageID
+                                        ,@StoreInFlag
+                                        ,@StoreOutFlag
+                                        ,@ScanStoreAddress1
+                                        ,@ScanStoreAddress2
+                                        ,@InputQuantity
+                                        ,@InputPackingCount
+                                        ,@ScanString1
+                                        ,@ScanString2
+                                        ,@ScanChangeData
+                                        ,@ScanTime
+                                        ,@Latitude
+                                        ,@Longitude
+                                        ,@CreateDate
+                                    )
+                                ";
+
+                            var param1 = new
+                            {
+                                DepoID = postData.DepoID,
+                                HandyUserID = postData.HandyUserID,
+                                HandyOperationClass = postData.HandyOperationClass,
+                                HandyOperationMessage = postData.HandyOperationMessage,
+                                Device = postData.Device,
+                                HandyPageID = postData.HandyPageID,
+                                StoreInFlag = postData.StoreInFlag,
+                                StoreOutFlag = false,
+                                ScanStoreAddress1 = postData.ScanStoreAddress1,
+                                ScanStoreAddress2 = postData.ScanStoreAddress2,
+                                InputQuantity = postData.InputQuantity,
+                                InputPackingCount = postData.InputPackingCount,
+                                ScanString1 = postData.ScanString2,
+                                ScanString2 = postData.ScanString1,
+                                ScanChangeData = postData.ScanChangeData,
+                                ScanTime = postData.ScanTime,
+                                Latitude = postData.Latitude,
+                                Longitude = postData.Longitude,
+                                CreateDate = registData.CreateDate
+                            };
+                            scanRecordID = await connection.QuerySingleAsync<long>(sql1, param1, tran);
+
+                            // スキャンOK以外は、ここで終了する
+                            // Error情報を記録するのみ
+                            if (postData.HandyOperationClass != 0)
+                            {
+                                // スキップ
+                                continue;
+                            }
+
+                            var registedDatas = await GetShippedDataByDeliveryDate(registData.DatabaseName, postData.DepoID, postData.ProcessDate, postData.ProcessDate);
+                            var checkRegisted = registedDatas.Where(x =>
+                                x.CustomerDeliveryDate == Convert.ToDateTime(qrCodeItem2.DeleveryDate)
+                                && Convert.ToInt32(x.CustomerDeliveryTimeClass) == Convert.ToInt32(qrCodeItem2.DeliveryTimeClass)
+                                && x.ProductCode == qrCodeItem2.ProductCode
+                                    && x.LotQuantity == qrCodeItem2.Quantity
+                                && x.CustomerProductLabelBranchNumber == qrCodeItem2.ProductLabelBranchNumber
+                                ).FirstOrDefault();
+                            if (checkRegisted != null)
+                            {
+                                this.RegistedDataAdd(scanRecordID, listDataRegisted, handyReportLog, postData, qrCodeItem, qrCodeItem2);
+                                receivePostBackBody.AlreadyRegisteredDatas.Add(qrCodeItem2); // 出荷かんばん
+                                receivePostBackBody.AlreadyRegisteredDataCount++;
+                                //receivePostBackBody.AlreadyRegisteredDatas.Add(qrCodeItem); // 製品かんばん
+                                continue;
+                            }
+
+                            // 出庫実績をDBに登録
+                            var storeOutID = 0L;
+                            var sql2 = @"
+                                INSERT INTO D_StoreOut
+                                    (
+                                         ScanRecordID
+                                        ,ShipmentInstructionDetailID
+                                        ,StoreInID
+                                        ,DepoID
+                                        ,StoreOutDate
+                                        ,ProductCode
+                                        ,Quantity
+                                        ,Packing
+                                        ,PackingCount
+                                        ,StockLocation1
+                                        ,StockLocation2
+                                        ,AdjustmentFlag
+                                        ,Remark
+                                        ,DeleteFlag
+                                        ,DeleteStoreOutID
+                                        ,CreateDate
+                                        ,CreateUserID
+                                        ,UpdateDate
+                                        ,UpdateUserID
+                                    ) 
+                                    OUTPUT
+                                       INSERTED.StoreOutID
+                                VALUES
+                                    (
+                                         @ScanRecordID
+                                        ,@ShipmentInstructionDetailID
+                                        ,@StoreInID
+                                        ,@DepoID
+                                        ,@StoreOutDate
+                                        ,@ProductCode
+                                        ,@Quantity
+                                        ,@Packing
+                                        ,@PackingCount
+                                        ,@StockLocation1
+                                        ,@StockLocation2
+                                        ,@AdjustmentFlag
+                                        ,@Remark
+                                        ,@DeleteFlag
+                                        ,@DeleteStoreOutID
+                                        ,@CreateDate
+                                        ,@CreateUserID
+                                        ,@UpdateDate
+                                        ,@UpdateUserID
+                                    )
+                                ";
+                            storeOutID = await connection.QuerySingleAsync<long>(sql2, new
+                            {
+                                ScanRecordID = scanRecordID,
+                                ShipmentInstructionDetailID = defaultBigInt,
+                                StoreInID = defaultBigInt,
+                                DepoID = postData.DepoID,
+                                StoreOutDate = postData.ProcessDate,
+                                ProductCode = qrCodeItem.ProductCode,
+                                Quantity = qrCodeItem.Quantity,
+                                Packing = qrCodeItem.Packing,
+                                PackingCount = 1,
+                                StockLocation1 = qrCodeItem.NextProcess1,
+                                StockLocation2 = qrCodeItem.Location1,
+                                AdjustmentFlag = defaultBool,
+                                Remark = defaultString,
+                                DeleteFlag = defaultBool,
+                                DeleteStoreOutID = defaultBool,
+                                CreateDate = dtNow,
+                                CreateUserID = postData.HandyUserID,
+                                UpdateDate = dtNow,
+                                UpdateUserID = postData.HandyUserID
+                            }, tran);
+
+                            var shipmentID = 0L;
+                            var sql3 = @"
+                                INSERT INTO D_Shipment
+                                    (
+                                         ScanRecordID
+                                        ,ShipmentInstructionDetailID
+                                        ,StoreOutID
+                                        ,HandyMatchClass
+                                        ,HandyMatchResult
+                                        ,ShipmentDate
+                                        ,DepoID
+                                        ,DeliveryDate
+                                        ,DeliveryTimeClass
+                                        ,DeliverySlipNumber
+                                        ,DeliverySlipRowNumber
+                                        ,SupplierCode
+                                        ,SupplierClass
+                                        ,ProductCode
+                                        ,ProductAbbreviation
+                                        ,ProductManagementClass
+                                        ,ProductLabelBranchNumber
+                                        ,NextProcess1
+                                        ,Location1
+                                        ,NextProcess2
+                                        ,Location2
+                                        ,CustomerDeliveryDate
+                                        ,CustomerDeliveryTimeClass
+                                        ,CustomerDeliverySlipNumber
+                                        ,CustomerDeliverySlipRowNumber
+                                        ,CustomerCode
+                                        ,CustomerClass
+                                        ,CustomerName
+                                        ,CustomerProductCode
+                                        ,CustomerProductAbbreviation
+                                        ,CustomerProductManagementClass
+                                        ,CustomerProductLabelBranchNumber
+                                        ,CustomerNextProcess1
+                                        ,CustomerLocation1
+                                        ,CustomerNextProcess2
+                                        ,CustomerLocation2
+                                        ,CustomerOrderNumber
+                                        ,CustomerOrderClass
+                                        ,LotQuantity
+                                        ,FractionQuantity
+                                        ,Quantity
+                                        ,Packing
+                                        ,PackingCount
+                                        ,LotNumber
+                                        ,InvoiceNumber
+                                        ,ExpirationDate
+                                        ,DeleteFlag
+                                        ,DeleteShipmentID
+                                        ,Remark
+                                        ,CreateDate
+                                        ,CreateHandyUserID
+                                        ,CreateUserID
+                                        ,UpdateDate
+                                        ,UpdateUserID
+
+                                    ) 
+                                    OUTPUT 
+                                       INSERTED.ShipmentID
+                                VALUES
+                                    (
+                                         @ScanRecordID
+                                        ,@ShipmentInstructionDetailID
+                                        ,@StoreOutID
+                                        ,@HandyMatchClass
+                                        ,@HandyMatchResult
+                                        ,@ShipmentDate
+                                        ,@DepoID
+                                        ,@DeliveryDate
+                                        ,@DeliveryTimeClass
+                                        ,@DeliverySlipNumber
+                                        ,@DeliverySlipRowNumber
+                                        ,@SupplierCode
+                                        ,@SupplierClass
+                                        ,@ProductCode
+                                        ,@ProductAbbreviation
+                                        ,@ProductManagementClass
+                                        ,@ProductLabelBranchNumber
+                                        ,@NextProcess1
+                                        ,@Location1
+                                        ,@NextProcess2
+                                        ,@Location2
+                                        ,@CustomerDeliveryDate
+                                        ,@CustomerDeliveryTimeClass
+                                        ,@CustomerDeliverySlipNumber
+                                        ,@CustomerDeliverySlipRowNumber
+                                        ,@CustomerCode
+                                        ,@CustomerClass
+                                        ,@CustomerName
+                                        ,@CustomerProductCode
+                                        ,@CustomerProductAbbreviation
+                                        ,@CustomerProductManagementClass
+                                        ,@CustomerProductLabelBranchNumber
+                                        ,@CustomerNextProcess1
+                                        ,@CustomerLocation1
+                                        ,@CustomerNextProcess2
+                                        ,@CustomerLocation2
+                                        ,@CustomerOrderNumber
+                                        ,@CustomerOrderClass
+                                        ,@LotQuantity
+                                        ,@FractionQuantity
+                                        ,@Quantity
+                                        ,@Packing
+                                        ,@PackingCount
+                                        ,@LotNumber
+                                        ,@InvoiceNumber
+                                        ,@ExpirationDate
+                                        ,@DeleteFlag
+                                        ,@DeleteShipmentID
+                                        ,@Remark
+                                        ,@CreateDate
+                                        ,@CreateHandyUserID
+                                        ,@CreateUserID
+                                        ,@UpdateDate
+                                        ,@UpdateUserID
+                                    )
+                                ";
+
+                            shipmentID = await connection.QuerySingleAsync<long>(sql3, new
+                            {
+                                ScanRecordID = scanRecordID,
+                                ShipmentInstructionDetailID = defaultBigInt,
+                                StoreOutID = storeOutID,
+                                HandyMatchClass = defaultString,
+                                HandyMatchResult = defaultString,
+                                ShipmentDate = postData.ProcessDate,
+                                DepoID = postData.DepoID,
+                                DeliveryDate = defaultDateTime,
+                                DeliveryTimeClass = defaultString,
+                                DeliverySlipNumber = defaultString,
+                                DeliverySlipRowNumber = defaultInt,
+                                SupplierCode = qrCodeItem.SupplierCode,
+                                SupplierClass = defaultString,
+                                ProductCode = qrCodeItem.ProductCode,
+                                ProductAbbreviation = qrCodeItem.ProductAbbreviation,
+                                ProductManagementClass = defaultString,
+                                ProductLabelBranchNumber = qrCodeItem.ProductLabelBranchNumber,
+                                NextProcess1 = qrCodeItem.NextProcess1,
+                                Location1 = qrCodeItem.Location1,
+                                NextProcess2 = defaultString,
+                                Location2 = defaultString,
+                                CustomerDeliveryDate = qrCodeItem2.DeleveryDate,
+                                CustomerDeliveryTimeClass = qrCodeItem2.DeliveryTimeClass,
+                                CustomerDeliverySlipNumber = defaultString,
+                                CustomerDeliverySlipRowNumber = defaultInt,
+                                CustomerCode = defaultString,
+                                CustomerClass = defaultString,
+                                CustomerName = defaultString,
+                                CustomerProductCode = defaultString,
+                                CustomerProductAbbreviation = defaultString,
+                                CustomerProductManagementClass = defaultString,
+                                CustomerProductLabelBranchNumber = qrCodeItem2.ProductLabelBranchNumber,
+                                CustomerNextProcess1 = defaultString,
+                                CustomerLocation1 = defaultString,
+                                CustomerNextProcess2 = defaultString,
+                                CustomerLocation2 = defaultString,
+                                CustomerOrderNumber = defaultString,
+                                CustomerOrderClass = defaultString,
+                                LotQuantity = qrCodeItem.Quantity,
+                                FractionQuantity = defaultInt,
+                                Quantity = qrCodeItem.Quantity,
+                                Packing = qrCodeItem.Packing,
+                                PackingCount = 1,
+                                LotNumber = defaultString,
+                                InvoiceNumber = defaultString,
+                                ExpirationDate = defaultDateTime,
+                                DeleteFlag = defaultBool,
+                                DeleteShipmentID = defaultBool,
+                                Remark = defaultString,
+                                CreateDate = dtNow,
+                                CreateHandyUserID = postData.HandyUserID,
+                                CreateUserID = defaultInt,
+                                UpdateDate = dtNow,
+                                UpdateUserID = postData.HandyUserID
+                            }, tran);
+
+                            receivePostBackBody.SuccessDataCount++;
+                        }
+
+                        // ハンディレポートログをDBに登録
+                        foreach (var item in handyReportLog)
+                        {
+                            var sql_reporthandy_log = @$"
+                                                INSERT INTO D_HandyReportLog
+                                                (
+                                                       ScanRecordID
+                                                      ,HandyReport
+                                                )
+                                                VALUES
+                                                (
+                                                       @ScanRecordID
+                                                      ,@HandyReport
+                                                )
+                                            ";
+                            var result = await connection.ExecuteAsync(sql_reporthandy_log, new
+                            {
+                                ScanRecordID = item.ScanRecordID,
+                                HandyReport = item.HandyReport
+                            }, tran);
+                        }
+
+                        if(receivePostBackBody.AlreadyRegisteredDataCount <= 0)
+                        {
+                            tran.Commit();
+                        }
+                        else
+                        {
+                            tran.Rollback();
+                            receivePostBackBody.SuccessDataCount = 0;
+                            return (true, receivePostBackBody, "出荷実績データの登録に失敗しました");
+                        }
+                        return (false, receivePostBackBody, "出荷実績データの登録が完了しました");
+                    }
+                    catch (Exception)
+                    {
+                        tran.Rollback();
+                        receivePostBackBody.SuccessDataCount = 0;
+                        return (false, receivePostBackBody, "出荷実績データの登録に失敗しました");
+                    }
+                    
+                }
+            }
+
+           
+        }
+
+
+        private void RegistedDataAdd(long scanRecordID, List<RegistDataRecord> registDataRecords, List<HandyReportLog> handyReportLogs, ScanPostBody scanPost, QrcodeItem qrcodeItem, QrcodeItem qrcodeItem2)
+        {
+            // レスポンス 既に登録済データに格納
+            registDataRecords.Add(new RegistDataRecord() { PostBody = scanPost, QrcodeItem = qrcodeItem });
+
+            // ハンディレポートログに格納
+            handyReportLogs.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrcodeItem2) });
+            handyReportLogs.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrcodeItem) });
         }
     }
 }

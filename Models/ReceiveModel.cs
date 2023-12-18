@@ -24,6 +24,7 @@ namespace WarehouseWebApi.Models
         {
             public ScanPostBody PostBody { get; set; } = new ScanPostBody();
             public QrcodeItem QrcodeItem { get; set; } = new QrcodeItem();
+            public QrcodeItem QrcodeItem2 { get; set; } = new QrcodeItem(); // 出荷かんばん
         }
 
         public class D_Receive

@@ -18,6 +18,7 @@ namespace WarehouseWebApi.Models
             /// 0:納期
             /// </summary>
             public string DeliveryDate { get; set; } = string.Empty;
+            public string DeleveryDate { get; set; } = string.Empty;
             /// <summary>
             /// 1:便
             /// </summary>
@@ -98,6 +99,9 @@ namespace WarehouseWebApi.Models
             /// 14:置き場2（受入2）
             /// </summary>
             public string Location2 { get; set; } = string.Empty;
+
+            public int ProductLabelBranchNumber2 { get; set; }  // 出荷枝番
+            public bool StateFlag { get; set; }  // 出荷データのみ
 
             public static implicit operator QrcodeItem(List<ReceiveModel.RegistDataRecord> v)
             {

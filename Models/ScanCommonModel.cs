@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -27,6 +28,7 @@ namespace WarehouseWebApi.Models
             public string ScanString1 { get; set; } = String.Empty;
             public string ScanString2 { get; set; } = String.Empty;
             public string ScanChangeData { get; set; } = String.Empty;
+            public string ScanChangeData2 { get; set; } = String.Empty;
 
             [Required]
             public string ProcessDate { get; set; } = String.Empty;
@@ -154,8 +156,15 @@ namespace WarehouseWebApi.Models
                         // 置き場2（受入2）
                         qrcodeItem.Location2 = items[15];
 
+                        // 出荷枝番
+                        qrcodeItem.ProductLabelBranchNumber2 = Convert.ToInt32(items[16]);
+
+                        // 出荷かんばん<->製品かんばんプラグ
+                        qrcodeItem.StateFlag = Convert.ToBoolean(items[17]);
+
                         registData.PostBody = bodies[j];
                         registData.QrcodeItem = qrcodeItem;
+                        registData.QrcodeItem2 = JsonConvert.DeserializeObject<QrcodeItem>(bodies[j].ScanChangeData2);
                     }
 
                     registDatas.Add(registData);
