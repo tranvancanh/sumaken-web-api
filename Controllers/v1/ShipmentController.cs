@@ -264,11 +264,11 @@ namespace WarehouseWebApi.Controllers
                             };
                             scanRecordID = await connection.QuerySingleAsync<long>(sql1, param1, tran);
 
-                            // ハンディレポートログに格納
-                            if (!string.IsNullOrWhiteSpace(scanString1))
-                                handyReportLog.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrCodeItem) });
-                            if (!string.IsNullOrWhiteSpace(scanString2))
-                                handyReportLog.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrCodeItem2) });
+                            //// ハンディレポートログに格納
+                            //if (!string.IsNullOrWhiteSpace(scanString1))
+                            //    handyReportLog.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrCodeItem) });
+                            //if (!string.IsNullOrWhiteSpace(scanString2))
+                            //    handyReportLog.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrCodeItem2) });
 
                             // スキャンOK以外は、ここで終了する
                             // Error情報を記録するのみ
@@ -288,6 +288,7 @@ namespace WarehouseWebApi.Controllers
                                 ).FirstOrDefault();
                             if (checkRegisted != null)
                             {
+                                // ハンディレポートログに格納
                                 this.RegistedDataAdd(scanRecordID, listDataRegisted, handyReportLog, postData, qrCodeItem, qrCodeItem2);
                                 receivePostBackBody.AlreadyRegisteredDatas.Add(qrCodeItem2); // 出荷かんばん
                                 receivePostBackBody.AlreadyRegisteredDataCount++;
