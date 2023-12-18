@@ -264,6 +264,12 @@ namespace WarehouseWebApi.Controllers
                             };
                             scanRecordID = await connection.QuerySingleAsync<long>(sql1, param1, tran);
 
+                            // ハンディレポートログに格納
+                            if (!string.IsNullOrWhiteSpace(scanString1))
+                                handyReportLog.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrCodeItem) });
+                            if (!string.IsNullOrWhiteSpace(scanString2))
+                                handyReportLog.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrCodeItem2) });
+
                             // スキャンOK以外は、ここで終了する
                             // Error情報を記録するのみ
                             if (postData.HandyOperationClass != 0)
@@ -574,21 +580,18 @@ namespace WarehouseWebApi.Controllers
                         {
                             tran.Rollback();
                             receivePostBackBody.SuccessDataCount = 0;
-                            return (true, receivePostBackBody, "出荷実績データの登録に失敗しました");
+                            return (false, receivePostBackBody, "出荷実績データの登録に失敗しました");
                         }
-                        return (false, receivePostBackBody, "出荷実績データの登録が完了しました");
+                        return (true, receivePostBackBody, "出荷実績データの登録が完了しました");
                     }
                     catch (Exception)
                     {
                         tran.Rollback();
                         receivePostBackBody.SuccessDataCount = 0;
-                        return (false, receivePostBackBody, "出荷実績データの登録に失敗しました");
+                        throw;
                     }
-                    
                 }
             }
-
-           
         }
 
 
