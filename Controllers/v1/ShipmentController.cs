@@ -33,7 +33,12 @@ namespace WarehouseWebApi.Controllers
                 if (companys.Count != 1) return Responce.ExBadRequest("会社情報の取得に失敗しました");
                 var databaseName = companys[0].DatabaseName;
                 if (string.IsNullOrEmpty(databaseName)) return Responce.ExBadRequest("データベースの取得に失敗しました");
-                registedData = await GetShippedDataByDeliveryDate(databaseName, depoID, receiveDateStart, receiveDateEnd);
+                var connectionString = new GetConnectString(databaseName).ConnectionString;
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    registedData = await GetShippedDataByDeliveryDate(databaseName, depoID, receiveDateStart, receiveDateEnd, connection);
+                }
             }
             catch (Exception ex)
             {
@@ -43,83 +48,75 @@ namespace WarehouseWebApi.Controllers
             return Ok(registedData);
         }
 
-        public async Task<List<D_ShipmentModel>> GetShippedDataByDeliveryDate(string databaseName, int depoID, string shipmentDateStart, string shipmentDateStop)
+        private async Task<List<D_ShipmentModel>> GetShippedDataByDeliveryDate(string databaseName, int depoID, string shipmentDateStart, string shipmentDateStop, SqlConnection connection = null, SqlTransaction transaction = null )
         {
             var registedData = new List<D_ShipmentModel>();
-            var connectionString = new GetConnectString(databaseName).ConnectionString;
-            using (var connection = new SqlConnection(connectionString))
+            var query = @$"
+                        SELECT
+                            [ShipmentID]
+                            ,[ScanRecordID]
+                            ,[ShipmentInstructionDetailID]
+                            ,[StoreOutID]
+                            ,[HandyMatchClass]
+                            ,[HandyMatchResult]
+                            ,[ShipmentDate]
+                            ,[DepoID]
+                            ,[DeliveryDate]
+                            ,[DeliveryTimeClass]
+                            ,[DeliverySlipNumber]
+                            ,[DeliverySlipRowNumber]
+                            ,[SupplierCode]
+                            ,[SupplierClass]
+                            ,[ProductCode]
+                            ,[ProductAbbreviation]
+                            ,[ProductManagementClass]
+                            ,[ProductLabelBranchNumber]
+                            ,[NextProcess1]
+                            ,[Location1]
+                            ,[NextProcess2]
+                            ,[Location2]
+                            ,[CustomerDeliveryDate]
+                            ,[CustomerDeliveryTimeClass]
+                            ,[CustomerDeliverySlipNumber]
+                            ,[CustomerDeliverySlipRowNumber]
+                            ,[CustomerCode]
+                            ,[CustomerClass]
+                            ,[CustomerName]
+                            ,[CustomerProductCode]
+                            ,[CustomerProductAbbreviation]
+                            ,[CustomerProductManagementClass]
+                            ,[CustomerProductLabelBranchNumber]
+                            ,[CustomerNextProcess1]
+                            ,[CustomerLocation1]
+                            ,[CustomerNextProcess2]
+                            ,[CustomerLocation2]
+                            ,[CustomerOrderNumber]
+                            ,[CustomerOrderClass]
+                            ,[LotQuantity]
+                            ,[FractionQuantity]
+                            ,[Quantity]
+                            ,[Packing]
+                            ,[PackingCount]
+                            ,[LotNumber]
+                            ,[InvoiceNumber]
+                            ,[ExpirationDate]
+                            ,[DeleteFlag]
+                            ,[DeleteShipmentID]
+                            ,[Remark]
+                        FROM [D_Shipment]
+                        WHERE (1=1)
+                            AND DepoID = @DepoID
+                            AND ShipmentDate >= @ShipmentDateStart
+                            AND ShipmentDate <= @ShipmentDateStop
+                        ";
+            var param = new
             {
-                connection.Open();
-                var query = @$"
-                                    SELECT
-                                           [ShipmentID]
-                                          ,[ScanRecordID]
-                                          ,[ShipmentInstructionDetailID]
-                                          ,[StoreOutID]
-                                          ,[HandyMatchClass]
-                                          ,[HandyMatchResult]
-                                          ,[ShipmentDate]
-                                          ,[DepoID]
-                                          ,[DeliveryDate]
-                                          ,[DeliveryTimeClass]
-                                          ,[DeliverySlipNumber]
-                                          ,[DeliverySlipRowNumber]
-                                          ,[SupplierCode]
-                                          ,[SupplierClass]
-                                          ,[ProductCode]
-                                          ,[ProductAbbreviation]
-                                          ,[ProductManagementClass]
-                                          ,[ProductLabelBranchNumber]
-                                          ,[NextProcess1]
-                                          ,[Location1]
-                                          ,[NextProcess2]
-                                          ,[Location2]
-                                          ,[CustomerDeliveryDate]
-                                          ,[CustomerDeliveryTimeClass]
-                                          ,[CustomerDeliverySlipNumber]
-                                          ,[CustomerDeliverySlipRowNumber]
-                                          ,[CustomerCode]
-                                          ,[CustomerClass]
-                                          ,[CustomerName]
-                                          ,[CustomerProductCode]
-                                          ,[CustomerProductAbbreviation]
-                                          ,[CustomerProductManagementClass]
-                                          ,[CustomerProductLabelBranchNumber]
-                                          ,[CustomerNextProcess1]
-                                          ,[CustomerLocation1]
-                                          ,[CustomerNextProcess2]
-                                          ,[CustomerLocation2]
-                                          ,[CustomerOrderNumber]
-                                          ,[CustomerOrderClass]
-                                          ,[LotQuantity]
-                                          ,[FractionQuantity]
-                                          ,[Quantity]
-                                          ,[Packing]
-                                          ,[PackingCount]
-                                          ,[LotNumber]
-                                          ,[InvoiceNumber]
-                                          ,[ExpirationDate]
-                                          ,[DeleteFlag]
-                                          ,[DeleteShipmentID]
-                                          ,[Remark]
-                                        FROM [D_Shipment]
-                                        WHERE (1=1)
-                                            AND DepoID = @DepoID
-                                            AND ShipmentDate >= @ShipmentDateStart
-                                            AND ShipmentDate <= @ShipmentDateStop
-                                        ";
-
-                var param = new
-                {
-                    DepoID = depoID,
-                    ShipmentDateStart = shipmentDateStart,
-                    ShipmentDateStop = shipmentDateStop
-                };
-
-                registedData = (await connection.QueryAsync<D_ShipmentModel>(query, param)).ToList();
-
-                return registedData;
-            }
+                DepoID = depoID,
+                ShipmentDateStart = shipmentDateStart,
+                ShipmentDateStop = shipmentDateStop
+            };
+            registedData = (await connection.QueryAsync<D_ShipmentModel>(query, param, transaction)).ToList();
+            return registedData;
         }
 
 
@@ -268,7 +265,7 @@ namespace WarehouseWebApi.Controllers
                                 continue;
                             }
 
-                            var registedDatas = await GetShippedDataByDeliveryDate(registData.DatabaseName, postData.DepoID, postData.ProcessDate, postData.ProcessDate);
+                            var registedDatas = await GetShippedDataByDeliveryDate(registData.DatabaseName, postData.DepoID, postData.ProcessDate, postData.ProcessDate, connection, tran);
                             var checkRegisted = registedDatas.Where(x =>
                                 x.CustomerDeliveryDate == Convert.ToDateTime(qrCodeItem2.DeleveryDate)
                                 && Convert.ToInt32(x.CustomerDeliveryTimeClass) == Convert.ToInt32(qrCodeItem2.DeliveryTimeClass)
