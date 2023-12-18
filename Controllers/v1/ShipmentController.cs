@@ -232,7 +232,14 @@ namespace WarehouseWebApi.Controllers
                                         ,@CreateDate
                                     )
                                 ";
-
+                            var scanString1 = postData.ScanString1;
+                            var scanString2 = postData.ScanString2;
+                            if(postData.HandyOperationClass == 0 && !string.IsNullOrWhiteSpace(scanString1) && !string.IsNullOrWhiteSpace(scanString2))
+                            {
+                                var temString = scanString1;
+                                scanString1 = scanString2;
+                                scanString2 = temString;
+                            }
                             var param1 = new
                             {
                                 DepoID = postData.DepoID,
@@ -242,13 +249,13 @@ namespace WarehouseWebApi.Controllers
                                 Device = postData.Device,
                                 HandyPageID = postData.HandyPageID,
                                 StoreInFlag = postData.StoreInFlag,
-                                StoreOutFlag = false,
+                                StoreOutFlag = true,
                                 ScanStoreAddress1 = postData.ScanStoreAddress1,
                                 ScanStoreAddress2 = postData.ScanStoreAddress2,
                                 InputQuantity = postData.InputQuantity,
                                 InputPackingCount = postData.InputPackingCount,
-                                ScanString1 = postData.ScanString2,
-                                ScanString2 = postData.ScanString1,
+                                ScanString1 = scanString1,
+                                ScanString2 = scanString2,
                                 ScanChangeData = postData.ScanChangeData,
                                 ScanTime = postData.ScanTime,
                                 Latitude = postData.Latitude,
