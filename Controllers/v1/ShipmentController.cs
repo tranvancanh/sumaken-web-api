@@ -573,16 +573,7 @@ namespace WarehouseWebApi.Controllers
                             }, tran);
                         }
 
-                        if(receivePostBackBody.AlreadyRegisteredDataCount <= 0)
-                        {
-                            tran.Commit();
-                        }
-                        else
-                        {
-                            tran.Rollback();
-                            receivePostBackBody.SuccessDataCount = 0;
-                            return (false, receivePostBackBody, "出荷実績データの登録に失敗しました");
-                        }
+                        tran.Commit();
                         return (true, receivePostBackBody, "出荷実績データの登録が完了しました");
                     }
                     catch (Exception)
@@ -603,7 +594,7 @@ namespace WarehouseWebApi.Controllers
 
             // ハンディレポートログに格納
             handyReportLogs.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrcodeItem2) });
-            handyReportLogs.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrcodeItem) });
+            //handyReportLogs.Add(new HandyReportLog() { ScanRecordID = scanRecordID, HandyReport = JsonConvert.SerializeObject(qrcodeItem) });
         }
     }
 }
