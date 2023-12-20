@@ -291,64 +291,67 @@ namespace WarehouseWebApi.Controllers
                             // 入荷予定詳細データのID取得
                             long receiveScheduleDetailID = 0;
 
-                            // スキャンデータ（QR）に「納期」と「納品書番号」がある場合のみ
-                            if (!String.IsNullOrEmpty(qrcode.DeliveryDate) && !String.IsNullOrEmpty(qrcode.DeliverySlipNumber))
-                            {
-                                string sql3 = @"
-                                                SELECT
-                                                    A.ReceiveScheduleDetailID
-                                                FROM D_ReceiveScheduleDetail AS A
-                                                LEFT OUTER JOIN D_ReceiveScheduleHeader AS B
-                                                    ON   A.ReceiveScheduleDate = B.ReceiveScheduleDate
-                                                    AND A.DeliverySlipNumber = B.DeliverySlipNumber
-                                                WHERE (1=1)
-                                                    AND A.ReceiveScheduleDate = @ReceiveScheduleDate
-                                                    AND A.DeliverySlipNumber = @DeliverySlipNumber
-                                                    AND B.ReceiveTimeClass = @ReceiveTimeClass
-                                                    AND A.ProductCode = @ProductCode
-                                                    AND A.LotQuantity = @LotQuantity
-                                                    AND A.CancelFlag = @CancelFlag
-                                                    ";
+                            // ↓2023/12/21 EDIかんばんで入荷した際は、入荷予定データを消しこむ処理を行いたいが、
+                            // 工数が取れないので一旦コメントアウト(山本)
 
-                                var param3 = new
-                                {
-                                    ReceiveScheduleDate = qrcode.DeliveryDate,
-                                    qrcode.DeliverySlipNumber,
-                                    ReceiveTimeClass = qrcode.DeliveryTimeClass,
-                                    qrcode.ProductCode,
-                                    LotQuantity = qrcode.Quantity,
-                                    CancelFlag = 0
-                                };
+                            //// スキャンデータ（QR）に「納期」と「納品書番号」がある場合のみ
+                            //if (!String.IsNullOrEmpty(qrcode.DeliveryDate) && !String.IsNullOrEmpty(qrcode.DeliverySlipNumber))
+                            //{
+                            //    string sql3 = @"
+                            //                    SELECT
+                            //                        A.ReceiveScheduleDetailID
+                            //                    FROM D_ReceiveScheduleDetail AS A
+                            //                    LEFT OUTER JOIN D_ReceiveScheduleHeader AS B
+                            //                        ON   A.ReceiveScheduleDate = B.ReceiveScheduleDate
+                            //                        AND A.DeliverySlipNumber = B.DeliverySlipNumber
+                            //                    WHERE (1=1)
+                            //                        AND A.ReceiveScheduleDate = @ReceiveScheduleDate
+                            //                        AND A.DeliverySlipNumber = @DeliverySlipNumber
+                            //                        AND B.ReceiveTimeClass = @ReceiveTimeClass
+                            //                        AND A.ProductCode = @ProductCode
+                            //                        AND A.LotQuantity = @LotQuantity
+                            //                        AND A.CancelFlag = @CancelFlag
+                            //                        ";
 
-                                var result3 = connection.Query<long>(sql3, param3, tran).ToList();
+                            //    var param3 = new
+                            //    {
+                            //        ReceiveScheduleDate = qrcode.DeliveryDate,
+                            //        qrcode.DeliverySlipNumber,
+                            //        ReceiveTimeClass = qrcode.DeliveryTimeClass,
+                            //        qrcode.ProductCode,
+                            //        LotQuantity = qrcode.Quantity,
+                            //        CancelFlag = 0
+                            //    };
 
-                                if (result3 == null || result3.Count == 0)
-                                {
-                                    // データの取得に失敗した場合
-                                    tran.Rollback();
-                                    return (false, receivePostBackBody, "入荷予定データの取得に失敗しました");
-                                }
-                                else if (result3[0] > 1)
-                                {
-                                    // 入荷予定が複数存在した場合
-                                    tran.Rollback();
-                                    return (false, receivePostBackBody, "入荷予定データの取得に失敗しました");
-                                }
-                                else if (result3[0] == 0)
-                                {
-                                    // 入荷予定が存在しない場合
-                                }
-                                else if (result3[0] == 1)
-                                {
-                                    // OK
-                                    receiveScheduleDetailID = result3[0];
-                                }
-                                else
-                                {
-                                    // その他
-                                }
+                            //    var result3 = connection.Query<long>(sql3, param3, tran).ToList();
 
-                            }
+                            //    if (result3 == null || result3.Count == 0)
+                            //    {
+                            //        // データの取得に失敗した場合
+                            //        tran.Rollback();
+                            //        return (false, receivePostBackBody, "入荷予定データの取得に失敗しました");
+                            //    }
+                            //    else if (result3[0] > 1)
+                            //    {
+                            //        // 入荷予定が複数存在した場合
+                            //        tran.Rollback();
+                            //        return (false, receivePostBackBody, "入荷予定データの取得に失敗しました");
+                            //    }
+                            //    else if (result3[0] == 0)
+                            //    {
+                            //        // 入荷予定が存在しない場合
+                            //    }
+                            //    else if (result3[0] == 1)
+                            //    {
+                            //        // OK
+                            //        receiveScheduleDetailID = result3[0];
+                            //    }
+                            //    else
+                            //    {
+                            //        // その他
+                            //    }
+
+                            //}
 
                             #endregion
 
