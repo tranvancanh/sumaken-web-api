@@ -39,7 +39,7 @@ namespace WarehouseWebApi.Models
             public string NextProcess2 { get; set; } = String.Empty;
         }
 
-        public static List<D_Receive> GetReceiveByReceiveDate(string databaseName, string receiveDateStart, string receiveDateEnd)
+        public static List<D_Receive> GetReceiveByReceiveDate(string databaseName, int depoID, string receiveDateStart, string receiveDateEnd)
         {
             var receives = new List<D_Receive>();
 
@@ -63,6 +63,7 @@ namespace WarehouseWebApi.Models
                                               ,ProductLabelBranchNumber
                                           FROM D_Receive
                                           WHERE (1=1)
+                                                AND DepoID = @DepoID
                                                 AND ReceiveDate >= @ReceiveDateStart
                                                 AND ReceiveDate <= @ReceiveDateEnd
                                                 AND DeleteFlag = @DeleteFlag
@@ -70,6 +71,7 @@ namespace WarehouseWebApi.Models
 
                     var param = new
                     {
+                        DepoID = depoID,
                         ReceiveDateStart = receiveDateStart,
                         ReceiveDateEnd = receiveDateEnd,
                         DeleteFlag = 0

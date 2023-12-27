@@ -31,7 +31,7 @@ namespace WarehouseWebApi.Controllers
     public class ReceiveController : ControllerBase
     {
         [HttpGet("{companyID}")]
-        public IActionResult Get(int companyID, string receiveDateStart, string receiveDateEnd)
+        public IActionResult Get(int companyID, int depoID, string receiveDateStart, string receiveDateEnd)
         {
             var companys = CompanyModel.GetCompanyByCompanyID(companyID);
             if (companys.Count != 1) return Responce.ExBadRequest("会社情報の取得に失敗しました");
@@ -42,7 +42,7 @@ namespace WarehouseWebApi.Controllers
 
             try
             {
-                receives = ReceiveModel.GetReceiveByReceiveDate(databaseName, receiveDateStart, receiveDateEnd);
+                receives = ReceiveModel.GetReceiveByReceiveDate(databaseName, depoID, receiveDateStart, receiveDateEnd);
             }
             catch (Exception ex)
             {
@@ -235,6 +235,7 @@ namespace WarehouseWebApi.Controllers
                                             A.ReceiveDate >= @DuplicateCheckStartReceiveDate
                                         )
                                         AND DeleteFlag = @DeleteFlag
+                                        AND A.DepoID = @DepoID
                                         AND A.SupplierCode = @SupplierCode
                                         AND A.SupplierClass = @SupplierClass
                                         AND A.ProductCode = @ProductCode
@@ -251,6 +252,7 @@ namespace WarehouseWebApi.Controllers
                             {
                                 ReceiveDate = post.ProcessDate,
                                 DuplicateCheckStartReceiveDate = post.DuplicateCheckStartProcessDate,
+                                post.DepoID,
                                 DeleteFlag = 0,
                                 qrcode.SupplierCode,
                                 qrcode.SupplierClass,

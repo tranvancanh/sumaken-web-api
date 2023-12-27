@@ -108,12 +108,14 @@ namespace WarehouseWebApi.Controllers
                             AND DepoID = @DepoID
                             AND ShipmentDate >= @ShipmentDateStart
                             AND ShipmentDate <= @ShipmentDateStop
+                            AND DeleteFlag = @DeleteFlag
                         ";
             var param = new
             {
                 DepoID = depoID,
                 ShipmentDateStart = shipmentDateStart,
-                ShipmentDateStop = shipmentDateStop
+                ShipmentDateStop = shipmentDateStop,
+                DeleteFlag = 0
             };
             registedData = (await connection.QueryAsync<D_ShipmentModel>(query, param, transaction)).ToList();
             return registedData;
