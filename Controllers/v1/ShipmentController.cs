@@ -23,6 +23,14 @@ namespace WarehouseWebApi.Controllers
         private static string defaultString = string.Empty;
         private static DateTime defaultDateTime = new DateTime(1900, 01, 01);
 
+        private readonly ILogger<ShipmentController> _logger;
+        public ShipmentController(ILogger<ShipmentController> logger)
+        {
+            _logger = logger;
+            _logger.LogInformation("Nlog is started to ShipmentController");
+        }
+
+
         [HttpGet("{companyID}")]
         public async Task<IActionResult> Get(int companyID, int depoID, string receiveDateStart, string receiveDateEnd)
         {
@@ -151,6 +159,7 @@ namespace WarehouseWebApi.Controllers
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex.Message);
                     return Responce.ExServerError(ex);
                 }
 
@@ -264,7 +273,16 @@ namespace WarehouseWebApi.Controllers
                                 Longitude = postData.Longitude,
                                 CreateDate = registData.CreateDate
                             };
-                            scanRecordID = await connection.QuerySingleAsync<long>(sql1, param1, tran);
+                            try
+                            {
+                                scanRecordID = await connection.QuerySingleAsync<long>(sql1, param1, tran);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex.Message);
+                                // スキップ
+                                continue;
+                            }
 
                             //// ハンディレポートログに格納
                             //if (!string.IsNullOrWhiteSpace(scanString1))
