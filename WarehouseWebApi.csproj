@@ -11,7 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="NLOG.config" />
+    <None Include="NLOG.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
