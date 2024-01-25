@@ -50,6 +50,7 @@ namespace WarehouseWebApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex.Message);
                 return Responce.ExServerError(ex);
             }
 
@@ -136,37 +137,38 @@ namespace WarehouseWebApi.Controllers
             var createDatetime = DateTime.Now;
             var registData = new RegistData();
 
-            // データベース名の取得
-            var companys = CompanyModel.GetCompanyByCompanyID(companyID);
-            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
-            registData.DatabaseName = companys[0].DatabaseName;
-
-            // 処理用のデータ詳細を取得
-
-            var getRegistData = GetScanRegistData(body);
-
-            if (getRegistData.result)
+            try
             {
-                registData.RegistDataRecords = getRegistData.registDatas;
-                registData.CreateDate = createDatetime;
+                // データベース名の取得
+                var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+                    registData.DatabaseName = companys[0].DatabaseName;
 
-                (bool result, ReceivePostBackBody receivePostBackBody, string message) receivePostBackBody = (false, new ReceivePostBackBody(), "");
+                // 処理用のデータ詳細を取得
 
-                try
+                var getRegistData = GetScanRegistData(body);
+
+                if (getRegistData.result)
                 {
+                    registData.RegistDataRecords = getRegistData.registDatas;
+                    registData.CreateDate = createDatetime;
+
+                    (bool result, ReceivePostBackBody receivePostBackBody, string message) receivePostBackBody = (false, new ReceivePostBackBody(), "");
+
                     receivePostBackBody = await SaveChangeData(registData);
                     return Ok(receivePostBackBody.receivePostBackBody);
+
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex.Message);
-                    return Responce.ExServerError(ex);
+                    return Responce.ExBadRequest("スキャンデータの変換に失敗しました");
                 }
 
             }
-            else
+            catch (Exception ex)
             {
-                return Responce.ExBadRequest("スキャンデータの変換に失敗しました");
+                _logger.LogError(ex.Message);
+                return Responce.ExServerError(ex);
             }
         }
 
