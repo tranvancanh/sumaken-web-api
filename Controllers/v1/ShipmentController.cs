@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
+using System.Xml.Linq;
 using WarehouseWebApi.common;
 using WarehouseWebApi.Common;
 using WarehouseWebApi.Models;
@@ -136,9 +137,13 @@ namespace WarehouseWebApi.Controllers
         {
             var createDatetime = DateTime.Now;
             var registData = new RegistData();
-
             try
             {
+                var stringJsonData = JsonConvert.SerializeObject(body);
+                _logger.LogWarning(stringJsonData);
+                //var logger = NLog.LogManager.GetLogger("datafile1");
+                //logger.Log(NLog.LogLevel.Fatal, stringJsonData);
+
                 // データベース名の取得
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
                 if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
