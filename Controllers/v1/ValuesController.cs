@@ -13,12 +13,12 @@ namespace WarehouseWebApi.Controllers.v1
         [HttpGet]
         public IEnumerable<string> Get()
         {
-
-            var env = "";
+            var env = string.Empty;
 #if DEBUG
        env = "Debug";
-#endif
+#else
             env = "Productions";
+#endif
             return new string[] { "value1", "value2", $"Env: {env}" };
         }
 
