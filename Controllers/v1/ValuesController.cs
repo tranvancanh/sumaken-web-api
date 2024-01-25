@@ -13,7 +13,13 @@ namespace WarehouseWebApi.Controllers.v1
         [HttpGet]
         public IEnumerable<string> Get()
         {
-            return new string[] { "value1", "value2" };
+
+            var env = "";
+#if DEBUG
+       env = "Debug";
+#endif
+            env = "Productions";
+            return new string[] { "value1", "value2", $"Env: {env}" };
         }
 
         // GET api/<ValuesController>/5
