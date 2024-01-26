@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
-using System.Xml.Linq;
 using WarehouseWebApi.common;
 using WarehouseWebApi.Common;
 using WarehouseWebApi.Models;
@@ -38,8 +37,14 @@ namespace WarehouseWebApi.Controllers
             var registedData = new List<D_ShipmentModel>();
             try
             {
+                var startTime = DateTime.Now;
+                _logger.LogInformation("データ取得処理は開始");
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
-                if (companys.Count != 1) return Responce.ExBadRequest("会社情報の取得に失敗しました");
+                if (companys.Count != 1)
+                {
+                    _logger.LogError("会社情報の取得に失敗しました");
+                    return Responce.ExBadRequest("会社情報の取得に失敗しました"); 
+                }
                 var databaseName = companys[0].DatabaseName;
                 if (string.IsNullOrEmpty(databaseName)) return Responce.ExBadRequest("データベースの取得に失敗しました");
                 var connectionString = new GetConnectString(databaseName).ConnectionString;
@@ -48,10 +53,16 @@ namespace WarehouseWebApi.Controllers
                     connection.Open();
                     registedData = await GetShippedDataByDeliveryDate(databaseName, depoID, receiveDateStart, receiveDateEnd, connection);
                 }
+                var endTime = DateTime.Now;
+                var elapsed = endTime - startTime;
+                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                _logger.LogInformation("データ取得処理は正常終了");
+                _logger.LogInformation("データ取得時間は: " + completeTime);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError("データ取得処理は異常終了");
+                _logger.LogError("Message   ：   " + ex.Message);
                 return Responce.ExServerError(ex);
             }
 
@@ -139,10 +150,9 @@ namespace WarehouseWebApi.Controllers
             var registData = new RegistData();
             try
             {
+                _logger.LogInformation("登録処理は開始");
                 var stringJsonData = JsonConvert.SerializeObject(body);
-                _logger.LogWarning(stringJsonData);
-                //var logger = NLog.LogManager.GetLogger("datafile1");
-                //logger.Log(NLog.LogLevel.Fatal, stringJsonData);
+                _logger.LogDebug(stringJsonData);
 
                 // データベース名の取得
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
@@ -159,20 +169,27 @@ namespace WarehouseWebApi.Controllers
                     registData.CreateDate = createDatetime;
 
                     (bool result, ReceivePostBackBody receivePostBackBody, string message) receivePostBackBody = (false, new ReceivePostBackBody(), "");
-
                     receivePostBackBody = await SaveChangeData(registData);
-                    return Ok(receivePostBackBody.receivePostBackBody);
 
+                    var endTime = DateTime.Now;
+                    var elapsed = endTime - createDatetime;
+                    var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                    _logger.LogInformation("登録処理は正常終了");
+                    _logger.LogInformation("登録処理時間は: " + completeTime);
+
+                    return Ok(receivePostBackBody.receivePostBackBody);
                 }
                 else
                 {
+                    _logger.LogError("Message   ：  スキャンデータの変換に失敗しました");
                     return Responce.ExBadRequest("スキャンデータの変換に失敗しました");
                 }
 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                _logger.LogError("登録処理は異常終了");
+                _logger.LogError("Message   ：   " + ex.Message);
                 return Responce.ExServerError(ex);
             }
         }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Versioning;
 using NLog;
 using NLog.Web;
-using System;
 using WarehouseWebApi.Common;
 using WarehouseWebApi.Controllers;
 
