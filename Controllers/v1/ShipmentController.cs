@@ -156,8 +156,12 @@ namespace WarehouseWebApi.Controllers
 
                 // データベース名の取得
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
-                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
-                    registData.DatabaseName = companys[0].DatabaseName;
+                if (companys.Count != 1) 
+                {
+                    _logger.LogError("会社IDが存在しないためデータベースの取得に失敗しました\"");
+                    return Responce.ExNotFound("データベースの取得に失敗しました"); 
+                }
+                registData.DatabaseName = companys[0].DatabaseName;
 
                 // 処理用のデータ詳細を取得
 
