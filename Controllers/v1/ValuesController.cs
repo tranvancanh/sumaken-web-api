@@ -19,7 +19,8 @@ namespace WarehouseWebApi.Controllers.v1
 #else
             env = "Productions";
 #endif
-            return new string[] { "value1", "value2", $"Env: {env}" };
+            var dateTimeNow = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            return new string[] { "value1", "value2", $"Env: {env}", $"日時: {dateTimeNow}" };
         }
 
         // GET api/<ValuesController>/5
