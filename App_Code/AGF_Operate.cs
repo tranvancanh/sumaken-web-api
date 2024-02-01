@@ -32,8 +32,6 @@ namespace AGF_operater
 
 
 
-
-
         // Public Function DCC_State_Check() As AGF_order_dat.DCC_STATE
         // '機能　 　　: DCCの状態を取得する。専用クラスの各プロパティに放り込む
         // '返り値 　　:

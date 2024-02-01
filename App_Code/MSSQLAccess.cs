@@ -23,7 +23,7 @@ public partial class MSSQLAccess : IDisposable
     // Protected ConnectionString_ascdb As String = GetConS.TZN
 
     // 東山DB
-    protected string ConnectionString = "Data Source=SQLTOZAN;Failover Partner=GWTOZAN2;Initial Catalog=tozandb;User ID=tozanadmin;Password=0526250148";
+    protected string ConnectionString = "Data Source=SQLTOZAN;Failover Partner=GWTOZAN2;Initial Catalog=tozandb;User ID=tozanadmin;Password=0526250148;Connection Timeout=86400;MultipleActiveResultSets=True;";
 
     protected DataTable dt01;
 
