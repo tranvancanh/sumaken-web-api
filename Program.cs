@@ -5,7 +5,7 @@ using WarehouseWebApi.Common;
 using WarehouseWebApi.Controllers;
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-logger.Info("init main");
+logger.Info("Init Program | Start Application");
 
 try
 {

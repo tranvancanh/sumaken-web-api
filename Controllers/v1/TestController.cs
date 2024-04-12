@@ -7,9 +7,9 @@ namespace WarehouseWebApi.Controllers.v1
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
-    public class ValuesController : ControllerBase
+    public class TestController : ControllerBase
     {
-        // GET: api/<ValuesController>
+        // GET: api/<TestController>
         [HttpGet]
         public IEnumerable<string> Get()
         {
@@ -23,26 +23,26 @@ namespace WarehouseWebApi.Controllers.v1
             return new string[] { "value1", "value2", $"Env: {env}", $"日時: {dateTimeNow}" };
         }
 
-        // GET api/<ValuesController>/5
+        // GET api/<TestController>/5
         [HttpGet("{id}")]
         public string Get(int id)
         {
             return "value";
         }
 
-        // POST api/<ValuesController>
+        // POST api/<TestController>
         [HttpPost]
         public void Post([FromBody] string value)
         {
         }
 
-        // PUT api/<ValuesController>/5
+        // PUT api/<TestController>/5
         [HttpPut("{id}")]
         public void Put(int id, [FromBody] string value)
         {
         }
 
-        // DELETE api/<ValuesController>/5
+        // DELETE api/<TestController>/5
         [HttpDelete("{id}")]
         public void Delete(int id)
         {

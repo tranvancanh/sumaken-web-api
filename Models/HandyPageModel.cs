@@ -39,9 +39,10 @@ namespace WarehouseWebApi.Models
 
                     var query = $@"
                                         SELECT
-                                               A.SortNumber AS HandyPageNumber
+                                               A.SortNumber
                                               ,A.HandyPageID
                                               ,A.HandyPageName
+                                              ,ROW_NUMBER() OVER(ORDER BY A.SortNumber) AS HandyPageNumber
                                         FROM M_HandyPage AS A
                                         {addLeftOuter}
                                         WHERE 1=1

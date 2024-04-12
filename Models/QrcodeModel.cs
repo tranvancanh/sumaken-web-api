@@ -103,6 +103,10 @@ namespace WarehouseWebApi.Models
             public int ProductLabelBranchNumber2 { get; set; }  // 出荷枝番
             public bool StateFlag { get; set; }  // 出荷データのみ
 
+            // AGF指示画面用
+            public string Customer_Code { get; set; }
+            public string Final_Delivery_Place { get; set; }
+
             public static implicit operator QrcodeItem(List<ReceiveModel.RegistDataRecord> v)
             {
                 throw new NotImplementedException();
@@ -155,6 +159,13 @@ namespace WarehouseWebApi.Models
             public int Location2Length { get; set; }
             public int PackingLength { get; set; }
             public bool ForShipmentFlag {  get; set; }
+
+            //AGF指示画面用
+            public int CustomerCodeIndex { get; set; }
+            public int CustomerCodeLength { get; set; }
+
+            public int FinalDeliveryPlaceIndex { get; set; }
+            public int FinalDeliveryPlaceLength { get; set; }
 
         }
 
@@ -209,6 +220,10 @@ namespace WarehouseWebApi.Models
                                               ,MaxStringLength
                                               ,ToyotaEdiWgFlag
                                               ,ForShipmentFlag
+                                              ,CustomerCodeIndex
+                                              ,CustomerCodeLength
+                                              ,FinalDeliveryPlaceIndex
+                                              ,FinalDeliveryPlaceLength
                                           FROM M_Qrcode AS A
                                           LEFT OUTER JOIN M_QrcodeIndex AS B ON A.QrcodeIndexID = B.QrcodeIndexID
                                           WHERE 1=1

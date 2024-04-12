@@ -54,6 +54,40 @@ namespace WarehouseWebApi.Models
             }
         }
 
+        /// <summary>
+        /// /酒倉デポAGFハンディの接続先を取得 
+        /// </summary>
+        /// <param name="companyID"></param>
+        /// <returns></returns>
+        public static string GetCompanyByCompanyID_AGF(string databaseName, string companyCode)
+        {
+            var handyApiUrl = string.Empty;
+            var connectionString = new GetConnectString(databaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                try
+                {
+
+                    var query = @"
+                                 SELECT TOP (1) [AGFApiUrl]
+                                 FROM [M_AGF_WebAPIURL]
+                                 WHERE [CompanyCode] = @CompanyCode
+                                ";
+                    var param = new
+                    {
+                        CompanyCode = companyCode
+                    };
+                    handyApiUrl = connection.Query<string>(query, param).FirstOrDefault();
+                    return handyApiUrl;
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+            }
+        }
+
         public static List<M_Company> GetCompanyByCompanyCodeAndPassword(string companyCode, string companyPassword)
         {
             var companys = new List<M_Company>();
