@@ -99,18 +99,33 @@ namespace WarehouseWebApi.Controllers
                                         WHERE 1=1
                                             AND HandyUserID = @HandyUserID
                                         ORDER BY UpdateDate Desc
-                                                ";
+                                ";
                     var param = new
                     {
                         input.HandyUserID
                     };
                     latestDevice = connection.QueryFirstOrDefault<string>(query, param);
+                    if (latestDevice != input.Device) return Responce.ExBadRequest("登録されたデバイスと一致しません");
+
+                    var versionUpdateTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                    var SQL_UPDATE_Version = $@"
+                                                UPDATE [M_HandyUser]
+                                                SET [CurrentVersion] = @CurrentVersion, [VersionUpdateTime] = @VersionUpdateTime
+                                                WHERE [HandyUserID] = @HandyUserID
+                                                AND [CurrentVersion] != @CurrentVersion
+                                             ;";
+                    var param_update_version = new
+                    {
+                        HandyUserID = input.HandyUserID,
+                        CurrentVersion = input.HandyAppVersion,
+                        VersionUpdateTime = versionUpdateTime
+                    };
+                    var result = connection.Execute(SQL_UPDATE_Version, param_update_version);
                 }
                 catch (Exception ex)
                 {
                     return Responce.ExServerError(ex);
                 }
-                if (latestDevice != input.Device) return Responce.ExBadRequest("登録されたデバイスと一致しません");
             }
 
             // ログイン成功
