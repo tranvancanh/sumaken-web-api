@@ -6,7 +6,7 @@ namespace WarehouseWebApi.Common
 {
     public class SchedulingTask
     {
-        private int MostRecentDays = 30; // 30days
+        private int MostRecentDays = 1; // 30days
 
         private readonly ILogger<SchedulingTask> _logger;
         public SchedulingTask(ILogger<SchedulingTask> logger)
@@ -49,6 +49,7 @@ namespace WarehouseWebApi.Common
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
@@ -104,6 +105,7 @@ namespace WarehouseWebApi.Common
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
@@ -156,6 +158,7 @@ namespace WarehouseWebApi.Common
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
@@ -209,6 +212,7 @@ namespace WarehouseWebApi.Common
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
