@@ -103,8 +103,9 @@ namespace WarehouseWebApi.Models
             public int ProductLabelBranchNumber2 { get; set; }  // 出荷枝番
             public bool StateFlag { get; set; }  // 出荷データのみ
 
-            // AGF指示画面用
-            public string Customer_Code { get; set; }
+            // AGF指示画面,出庫通常画面用
+            public string Customer_Code { get; set; } = string.Empty; // AGF画面と出庫通常を使う
+            public string Customer_Name { get; set; } = string.Empty; // 出庫通常を使う
             public string Final_Delivery_Place { get; set; }
 
             public static implicit operator QrcodeItem(List<ReceiveModel.RegistDataRecord> v)

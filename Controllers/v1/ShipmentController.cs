@@ -333,6 +333,7 @@ namespace WarehouseWebApi.Controllers
                                 && x.ProductCode == qrCodeItem2.ProductCode
                                     && x.LotQuantity == qrCodeItem2.Quantity
                                 && x.CustomerProductLabelBranchNumber == qrCodeItem2.ProductLabelBranchNumber
+                                && x.CustomerCode == qrCodeItem2.Customer_Code
                                 ).FirstOrDefault();
                             if (checkRegisted != null)
                             {
@@ -565,9 +566,9 @@ namespace WarehouseWebApi.Controllers
                                 CustomerDeliveryTimeClass = qrCodeItem2.DeliveryTimeClass,
                                 CustomerDeliverySlipNumber = defaultString,
                                 CustomerDeliverySlipRowNumber = defaultInt,
-                                CustomerCode = defaultString,
+                                CustomerCode = qrCodeItem2.Customer_Code,
                                 CustomerClass = defaultString,
-                                CustomerName = defaultString,
+                                CustomerName = qrCodeItem2.Customer_Name,
                                 CustomerProductCode = defaultString,
                                 CustomerProductAbbreviation = defaultString,
                                 CustomerProductManagementClass = defaultString,

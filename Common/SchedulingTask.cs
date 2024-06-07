@@ -6,7 +6,7 @@ namespace WarehouseWebApi.Common
 {
     public class SchedulingTask
     {
-        private int MostRecentDays = 1; // 30days
+        private int MostRecentDays = 10; // 30days
 
         private readonly ILogger<SchedulingTask> _logger;
         public SchedulingTask(ILogger<SchedulingTask> logger)
