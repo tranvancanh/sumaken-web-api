@@ -34,6 +34,7 @@ namespace WarehouseWebApi.Models
             public string DepoName { get; set; } = string.Empty;
             public int AdministratorFlag { get; set; }
             public int DefaultHandyPageID { get; set; }
+            public string TokenString { get; set; } = string.Empty;
         }
 
     }

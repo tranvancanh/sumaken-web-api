@@ -1,21 +1,15 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.IO;
-using WarehouseWebApi.Models;
-using WarehouseWebApi.common;
+using Microsoft.IdentityModel.Tokens;
 using System.Data.SqlClient;
-using System.Data;
-using Dapper;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using WarehouseWebApi.common;
 using WarehouseWebApi.Common;
-using System.ComponentModel.Design;
+using WarehouseWebApi.Models;
 //using Microsoft.AspNetCore.Http.HttpResults;
 using static WarehouseWebApi.Models.LoginModel;
-using static WarehouseWebApi.Models.CompanyModel;
 
 namespace WarehouseWebApi.Controllers
 {
@@ -24,6 +18,12 @@ namespace WarehouseWebApi.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
+        public LoginController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         // POST: api/<controller>
         [HttpPost]
         public IActionResult Post([FromBody] LoginModel.LoginPostBody input)
@@ -137,9 +137,42 @@ namespace WarehouseWebApi.Controllers
             outPut.DepoID = depo.DepoID;
             outPut.DepoCode = depo.DepoCode;
             outPut.DepoName = depo.DepoName;
+            outPut.TokenString = GenerateAccessToken(input, outPut);
             return Ok(outPut);
 
         }
 
-      }
+        private string GenerateAccessToken(LoginPostBody loginPost, LoginPostBackContent loginPostContent)
+        {
+            // Create user claims
+            var claims = new List<Claim>
+            {
+                new Claim("CompanyID", loginPost.CompanyID.ToString()),
+                new Claim("CompanyName", loginPostContent.CompanyName),
+                new Claim("HandyUserID", loginPost.HandyUserID.ToString()),
+                new Claim("HandyUserCode", loginPost.HandyUserCode),
+                new Claim("HandyUserName", loginPostContent.HandyUserName),
+                new Claim("AdministratorFlag", loginPostContent.AdministratorFlag.ToString()),
+                new Claim("DepoID", loginPostContent.DepoID.ToString()),
+                new Claim("DepoCode", loginPostContent.DepoCode),
+                new Claim("DepoName", loginPostContent.DepoName),
+                new Claim("HandyAppVersion", loginPost.HandyAppVersion.ToString())
+            };
+
+            // Create a JWT
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JwtSettings:Issuer"],
+                audience: _configuration["JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddDays(1), // Token expiration time
+                signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"])),
+                    SecurityAlgorithms.HmacSha256)
+            );
+
+            var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return accessToken;
+        }
+
+    }
 }
